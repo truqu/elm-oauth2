@@ -26,7 +26,7 @@ parse : Navigation.Location -> Result ParseError Response
 parse { search } =
     let
         qs =
-            QS.parse (Debug.log "SEARCH" search)
+            QS.parse search
 
         gets =
             flip (QS.one QS.string) qs
