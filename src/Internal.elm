@@ -67,11 +67,31 @@ authenticate authentication =
             let
                 body =
                     QS.empty
+                        |> QS.add "grant_type" "password"
                         |> QS.add "username" username
                         |> QS.add "password" password
-                        |> QS.add "grant_type" "password"
                         |> qsAddList "scope" scope
                         |> qsAddMaybe "state" state
+                        |> QS.render
+                        |> String.dropLeft 1
+
+                headers =
+                    authHeader credentials
+            in
+                makeRequest url headers body
+
+        Refresh { credentials, scope, token, url } ->
+            let
+                refreshToken =
+                    case token of
+                        Bearer t ->
+                            t
+
+                body =
+                    QS.empty
+                        |> QS.add "grant_type" "refresh_token"
+                        |> QS.add "refresh_token" refreshToken
+                        |> qsAddList "scope" scope
                         |> QS.render
                         |> String.dropLeft 1
 

@@ -21,7 +21,7 @@ you'll only need tu use one of the additional modules:
 
   - OAuth.AuthorizationCode: The authorization code grant type is used to obtain both access tokens
     and refresh tokens via a redirection-based flow and is optimized for confidential clients
-    [4.1](<<https://tools.ietf.org/html/rfc6749#section-4.1>).
+    [4.1](<https://tools.ietf.org/html/rfc6749#section-4.1).
 
   - OAuth.Implicit: The implicit grant type is used to obtain access tokens (it does not support the
     issuance of refresh tokens) and is optimized for public clients known to operate a particular
@@ -83,7 +83,7 @@ flows)
               }
           ,
           , code = "<authorization-code>"
-          , url = "<authorization-endpoint>"
+          , url = "<token-endpoint>"
           , redirectUri = "<my-web-server>"
           , scope = ["read:whatever"]
           , state = "whatever"
@@ -95,7 +95,7 @@ flows)
               { clientId = "<my-client-id>"
               , secret = "<my-client-secret>"
               }
-          , url = "<authorization-endpoint>"
+          , url = "<token-endpoint>"
           , scope = ["read:whatever"]
           , state = "whatever"
           }
@@ -109,8 +109,16 @@ flows)
           , password = "<user-password>"
           , scope = ["read:whatever"]
           , state = "whatever"
-          , url = "<authorization-endpoint>"
+          , url = "<token-endpoint>"
           , username = "<user-username>"
+          }
+
+    -- Refresh
+    let req = OAuth.Refresh
+          { credentials = Nothing
+          , scope = ["read:whatever"]
+          , token = OAuth.Bearer "abcdef1234567890"
+          , url = "<token-endpoint>"
           }
 
 -}
@@ -136,6 +144,12 @@ type Authentication
         , state : Maybe String
         , url : String
         , username : String
+        }
+    | Refresh
+        { credentials : Maybe Credentials
+        , token : Token
+        , scope : List String
+        , url : String
         }
 
 
