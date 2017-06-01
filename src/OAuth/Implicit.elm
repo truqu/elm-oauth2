@@ -18,7 +18,7 @@ After those steps, the client owns an `access_token` that can be used to authori
 request. A minimalistic setup goes like this:
 
     import OAuth
-    import OAuth.AuthorizationCode
+    import OAuth.Implicit
     import Navigation
     import Html exposing (..)
     import Html.Events exposing (..)
@@ -44,13 +44,13 @@ request. A minimalistic setup goes like this:
     init location =
         case OAuth.Implicit.parse location of
             Ok (OAuth.OkToken token) ->
-                Debug.log "GOT TOKEN" token |> \_ -> model ! []
+                Debug.log "GOT TOKEN" token |> \_ -> {} ! []
 
             Ok res ->
-                Debug.log "UNEXPECTED ANSWER" res |> \_ -> model ! []
+                Debug.log "UNEXPECTED ANSWER" res |> \_ -> {} ! []
 
             Err err ->
-                Debug.log "ERROR" err |> \_ -> model ! []
+                Debug.log "ERROR" err |> \_ -> {} ! []
 
     update : Msg -> Model -> ( Model, Cmd Msg )
     update msg model =
