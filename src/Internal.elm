@@ -188,7 +188,7 @@ parseError error errorDescription errorUri state =
 
 parseToken : String -> Maybe String -> Maybe Int -> List String -> Maybe String -> Result ParseError Response
 parseToken accessToken mTokenType mExpiresIn scope state =
-    case ( mTokenType, mExpiresIn ) of
+    case ( Maybe.map String.toLower mTokenType, mExpiresIn ) of
         ( Just "bearer", mExpiresIn ) ->
             Ok <|
                 OkToken
@@ -217,12 +217,7 @@ parseAuthorizationCode code state =
 
 qsAddList : String -> List String -> QS.QueryString -> QS.QueryString
 qsAddList param xs qs =
-    case xs of
-        [] ->
-            qs
-
-        h :: q ->
-            qsAddList param q <| QS.add param h qs
+    QS.add param (String.join " " xs) qs
 
 
 qsAddMaybe : String -> Maybe String -> QS.QueryString -> QS.QueryString
