@@ -9,6 +9,7 @@ module OAuth
         , Response(..)
         , Token(..)
         , errorFromString
+        , errorDecoder
         , showError
         , showResponseType
         , showToken
@@ -54,11 +55,12 @@ used.
 
 ## Responses
 
-@docs Response, Token, ParseError, Error, showToken, showError, errorFromString
+@docs Response, Token, ParseError, Error, showToken, showError, errorFromString, errorDecoder
 
 -}
 
 import Http
+import Json.Decode as Json
 
 
 {-| Request configuration for an authorization (Authorization Code & Implicit flows)
@@ -339,3 +341,15 @@ errorFromString str =
 
         _ ->
             Unknown
+
+
+{-| A json decoder for response error carried by the `Result Http.Error OAuth.Response` result of
+an http call.
+-}
+errorDecoder : Json.Decoder { error : Error, errorUri : Maybe String, errorDescription : Maybe String }
+errorDecoder =
+    Json.map3
+        (\error errorUri errorDescription -> { error = error, errorUri = errorUri, errorDescription = errorDescription })
+        (Json.map errorFromString <| Json.field "error" Json.string)
+        (Json.maybe <| Json.field "error_uri" Json.string)
+        (Json.maybe <| Json.field "error_description" Json.string)
