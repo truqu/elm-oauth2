@@ -66,7 +66,7 @@ request. A minimalistic setup goes like this:
                             , responseType = OAuth.Token
                             , scope = []
                             , state = Nothing
-                            , url = "https://github.com/login/oauth/authorize"
+                            , url = "<authorization-endpoint>"
                             }
                       ]
 

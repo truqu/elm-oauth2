@@ -60,7 +60,7 @@ request. A minimalistic setup goes like this:
                                 , secret = Nothing
                                 , scope = []
                                 , state = Nothing
-                                , url = "https://github.com/login/oauth/access_token"
+                                , url = "<token-endpoint>"
                                 }
                 in
                     {}
@@ -85,7 +85,7 @@ request. A minimalistic setup goes like this:
                             , responseType = OAuth.Code
                             , scope = []
                             , state = Nothing
-                            , url = "https://github.com/login/oauth/authorize"
+                            , url = "<authorization-endpoint>"
                             }
                       ]
 
