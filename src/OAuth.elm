@@ -74,29 +74,67 @@ type alias Authorization =
 
 {-| Request configuration for an authentication (Authorization Code, Password & Client Credentials
 flows)
+
+    -- AuthorizationCode
+    let req = OAuth.AuthorizationCode
+          { credentials =
+              { clientId = "<my-client-id>"
+              , secret = ""
+              }
+          ,
+          , code = "<authorization-code>"
+          , url = "<authorization-endpoint>"
+          , redirectUri = "<my-web-server>"
+          , scope = ["read:whatever"]
+          , state = "whatever"
+          }
+
+    -- ClientCredentials
+    let req = OAuth.ClientCredentials
+          { credentials =
+              { clientId = "<my-client-id>"
+              , secret = "<my-client-secret>"
+              }
+          , url = "<authorization-endpoint>"
+          , scope = ["read:whatever"]
+          , state = "whatever"
+          }
+
+    -- Password
+    let req = OAuth.Password
+          { credentials = Just
+              { clientId = "<my-client-id>"
+              , secret = "<my-client-secret>"
+              }
+          , password = "<user-password>"
+          , scope = ["read:whatever"]
+          , state = "whatever"
+          , url = "<authorization-endpoint>"
+          , username = "<user-username>"
+          }
+
 -}
 type Authentication
     = AuthorizationCode
-        { clientId : String
+        { credentials : Credentials
         , code : String
-        , url : String
         , redirectUri : String
         , scope : List String
-        , secret : Maybe String
         , state : Maybe String
+        , url : String
         }
     | ClientCredentials
         { credentials : Credentials
-        , url : String
         , scope : List String
         , state : Maybe String
+        , url : String
         }
     | Password
         { credentials : Maybe Credentials
-        , url : String
         , password : String
         , scope : List String
         , state : Maybe String
+        , url : String
         , username : String
         }
 
@@ -233,7 +271,7 @@ showToken (Bearer t) =
     "Bearer " ++ t
 
 
-{-| Attempt to parse a `String` into an `Error` code. Will parse to `Unknown` when the string
+{-| Attempts to parse a `String` into an `Error` code. Will parse to `Unknown` when the string
 isn't recognized.
 -}
 errorFromString : String -> Error

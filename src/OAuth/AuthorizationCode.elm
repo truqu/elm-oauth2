@@ -54,10 +54,9 @@ request. A minimalistic setup goes like this:
                     req =
                         OAuth.AuthorizationCode.authenticate <|
                             OAuth.AuthorizationCode
-                                { code = code
-                                , clientId = "<my-client-id>"
+                                { credentials = { clientId = "<my-client-id>", secret = "" }
+                                , code = code
                                 , redirectUri = "<my-web-server>"
-                                , secret = Nothing
                                 , scope = []
                                 , state = Nothing
                                 , url = "<token-endpoint>"

@@ -26,12 +26,12 @@ authorize { clientId, url, redirectUri, responseType, scope, state } =
 authenticate : Authentication -> Http.Request Response
 authenticate authentication =
     case authentication of
-        AuthorizationCode { clientId, code, redirectUri, scope, secret, state, url } ->
+        AuthorizationCode { credentials, code, redirectUri, scope, state, url } ->
             let
                 body =
                     QS.empty
                         |> QS.add "grant_type" "authorization_code"
-                        |> QS.add "client_id" clientId
+                        |> QS.add "client_id" credentials.clientId
                         |> QS.add "redirect_uri" redirectUri
                         |> QS.add "code" code
                         |> qsAddList "scope" scope
@@ -40,9 +40,11 @@ authenticate authentication =
                         |> String.dropLeft 1
 
                 headers =
-                    secret
-                        |> Maybe.map (\s -> { clientId = clientId, secret = s })
-                        |> authHeader
+                    authHeader <|
+                        if String.isEmpty credentials.secret then
+                            Nothing
+                        else
+                            Just credentials
             in
                 makeRequest url headers body
 
