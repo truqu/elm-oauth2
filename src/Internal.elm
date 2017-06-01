@@ -26,7 +26,7 @@ authorize { clientId, url, redirectUri, responseType, scope, state } =
 authenticate : Authentication -> Http.Request Response
 authenticate authentication =
     case authentication of
-        AuthorizationCode { clientId, code, url, redirectUri, scope, secret, state } ->
+        AuthorizationCode { clientId, code, redirectUri, scope, secret, state, url } ->
             let
                 body =
                     QS.empty
@@ -46,7 +46,7 @@ authenticate authentication =
             in
                 makeRequest url headers body
 
-        ClientCredentials { clientId, url, scope, secret, state } ->
+        ClientCredentials { credentials, scope, state, url } ->
             let
                 body =
                     QS.empty
@@ -57,11 +57,11 @@ authenticate authentication =
                         |> String.dropLeft 1
 
                 headers =
-                    authHeader (Just { clientId = clientId, secret = secret })
+                    authHeader (Just { clientId = credentials.clientId, secret = credentials.secret })
             in
                 makeRequest url headers body
 
-        Password { credentials, url, password, scope, state, username } ->
+        Password { credentials, password, scope, state, url, username } ->
             let
                 body =
                     QS.empty

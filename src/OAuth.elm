@@ -85,10 +85,9 @@ type Authentication
         , state : Maybe String
         }
     | ClientCredentials
-        { clientId : String
+        { credentials : Credentials
         , url : String
         , scope : List String
-        , secret : String
         , state : Maybe String
         }
     | Password
