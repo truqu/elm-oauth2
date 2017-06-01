@@ -167,7 +167,7 @@ refreshTokenDecoder =
 
 makeToken : Maybe String -> String -> Maybe Token
 makeToken mtoken tokenType =
-    case ( mtoken, tokenType ) of
+    case ( mtoken, String.toLower tokenType ) of
         ( Just token, "bearer" ) ->
             Just <| Bearer token
 
