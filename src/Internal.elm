@@ -9,7 +9,7 @@ import Base64
 
 
 authorize : Authorization -> Cmd msg
-authorize { clientId, endpoint, redirectUri, responseType, scope, state } =
+authorize { clientId, url, redirectUri, responseType, scope, state } =
     let
         qs =
             QS.empty
@@ -20,13 +20,13 @@ authorize { clientId, endpoint, redirectUri, responseType, scope, state } =
                 |> qsAddMaybe "state" state
                 |> QS.render
     in
-        Navigation.load (endpoint ++ qs)
+        Navigation.load (url ++ qs)
 
 
 authenticate : Authentication -> Http.Request Response
 authenticate authentication =
     case authentication of
-        AuthorizationCode { clientId, code, endpoint, redirectUri, scope, secret, state } ->
+        AuthorizationCode { clientId, code, url, redirectUri, scope, secret, state } ->
             let
                 body =
                     QS.empty
@@ -44,9 +44,9 @@ authenticate authentication =
                         |> Maybe.map (\s -> { clientId = clientId, secret = s })
                         |> authHeader
             in
-                makeRequest endpoint headers body
+                makeRequest url headers body
 
-        ClientCredentials { clientId, endpoint, scope, secret, state } ->
+        ClientCredentials { clientId, url, scope, secret, state } ->
             let
                 body =
                     QS.empty
@@ -59,9 +59,9 @@ authenticate authentication =
                 headers =
                     authHeader (Just { clientId = clientId, secret = secret })
             in
-                makeRequest endpoint headers body
+                makeRequest url headers body
 
-        Password { credentials, endpoint, password, scope, state, username } ->
+        Password { credentials, url, password, scope, state, username } ->
             let
                 body =
                     QS.empty
@@ -76,7 +76,7 @@ authenticate authentication =
                 headers =
                     authHeader credentials
             in
-                makeRequest endpoint headers body
+                makeRequest url headers body
 
 
 makeRequest : String -> List Http.Header -> String -> Http.Request Response
@@ -106,7 +106,7 @@ decoder =
     Json.oneOf
         [ Json.map5
             (\token expiresIn refreshToken scope state ->
-                Token
+                OkToken
                     { token = token
                     , expiresIn = expiresIn
                     , refreshToken = refreshToken
@@ -180,7 +180,7 @@ parseToken accessToken mTokenType mExpiresIn scope state =
     case ( mTokenType, mExpiresIn ) of
         ( Just "bearer", mExpiresIn ) ->
             Ok <|
-                Token
+                OkToken
                     { expiresIn = mExpiresIn
                     , refreshToken = Nothing
                     , scope = scope
@@ -198,7 +198,7 @@ parseToken accessToken mTokenType mExpiresIn scope state =
 parseAuthorizationCode : String -> Maybe String -> Result ParseError Response
 parseAuthorizationCode code state =
     Ok <|
-        Code
+        OkCode
             { code = code
             , state = state
             }
