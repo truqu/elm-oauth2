@@ -288,7 +288,7 @@ view model =
                             []
                         , button
                             [ style
-                                [ ( "background", "url('/examples/images/google.png') 1em center no-repeat" )
+                                [ ( "background", "url('/elm-oauth2/examples/images/google.png') 1em center no-repeat" )
                                 , ( "background-size", "2em" )
                                 , ( "border", "none" )
                                 , ( "box-shadow", "rgba(0,0,0,0.25) 0px 2px 4px 0px" )
