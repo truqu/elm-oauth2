@@ -20,7 +20,8 @@ The library contains a main OAuth module exposing types used accross other modul
 you'll only need tu use one of the additional modules:
 
   - OAuth.AuthorizationCode: The authorization code grant type is used to obtain both access tokens
-    and refresh tokens via a redirection-based flow and is optimized for confidential clients [4.1](<https://tools.ietf.org/html/rfc6749#section-4.1>
+    and refresh tokens via a redirection-based flow and is optimized for confidential clients
+    [4.1](<<https://tools.ietf.org/html/rfc6749#section-4.1>).
 
   - OAuth.Implicit: The implicit grant type is used to obtain access tokens (it does not support the
     issuance of refresh tokens) and is optimized for public clients known to operate a particular
