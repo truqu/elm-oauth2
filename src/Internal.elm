@@ -176,25 +176,14 @@ makeToken mtoken tokenType =
 
 
 parseError : String -> Maybe String -> Maybe String -> Maybe String -> Result ParseError Response
-parseError error mErrorDescription mErrorUri state =
-    case ( mErrorDescription, mErrorUri ) of
-        ( Just errorDescription, Just errorUri ) ->
-            Ok <|
-                OAuth.Err
-                    { error = errorFromString error
-                    , errorDescription = errorDescription
-                    , errorUri = errorUri
-                    , state = state
-                    }
-
-        ( Nothing, Just _ ) ->
-            Result.Err <| Missing [ "error_description" ]
-
-        ( Just _, Nothing ) ->
-            Result.Err <| Missing [ "error_uri" ]
-
-        ( Nothing, Nothing ) ->
-            Result.Err <| Missing [ "error_description, error_uri" ]
+parseError error errorDescription errorUri state =
+    Ok <|
+        OAuth.Err
+            { error = errorFromString error
+            , errorDescription = errorDescription
+            , errorUri = errorUri
+            , state = state
+            }
 
 
 parseToken : String -> Maybe String -> Maybe Int -> List String -> Maybe String -> Result ParseError Response
