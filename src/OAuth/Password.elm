@@ -18,7 +18,7 @@ After this step, the client owns an `access_token` that can be used to authorize
 request. A minimalistic setup goes like this:
 
     import OAuth
-    import OAuth.AuthorizationCode
+    import OAuth.Password
     import Navigation
     import Http
     import Html exposing (..)
