@@ -49,6 +49,9 @@ request. A minimalistic setup goes like this:
     init : Navigation.Location -> ( Model, Cmd Msg )
     init location =
         case OAuth.AuthorizationCode.parse location of
+            Err OAuth.Empty ->
+                {} ! []
+
             Ok (OAuth.OkCode { code }) ->
                 let
                     req =
@@ -67,8 +70,14 @@ request. A minimalistic setup goes like this:
                           , Navigation.modifyUrl (location.origin ++ location.pathname)
                           ]
 
-            _ ->
-                {} ! []
+            Ok (OAuth.Err err) ->
+                Debug.log "GOT ERROR" err |> \_ -> {} ! []
+
+            Ok res ->
+                Debug.log "UNEXPECTED ANSWER" res |> \_ -> {} ! []
+
+            Err err ->
+                Debug.log "PARSE ERROR" err |> \_ -> {} ! []
 
     update : Msg -> Model -> ( Model, Cmd Msg )
     update msg model =
@@ -91,13 +100,13 @@ request. A minimalistic setup goes like this:
             Login res ->
                 case res of
                     Ok (OAuth.OkToken token) ->
-                        Debug.log "GOT TOKEN" token |> \_ -> model ! []
+                        Debug.log "GOT TOKEN" token |> \_ -> {} ! []
 
                     Ok res ->
-                        Debug.log "UNEXPECTED ANSWER" res |> \_ -> model ! []
+                        Debug.log "UNEXPECTED ANSWER" res |> \_ -> {} ! []
 
                     Err err ->
-                        Debug.log "HTTP ERROR" err |> \_ -> model ! []
+                        Debug.log "HTTP ERROR" err |> \_ -> {} ! []
 
     view : Model -> Html Msg
     view _ =

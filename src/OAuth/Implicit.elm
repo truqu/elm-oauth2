@@ -46,11 +46,17 @@ request. A minimalistic setup goes like this:
             Ok (OAuth.OkToken token) ->
                 Debug.log "GOT TOKEN" token |> \_ -> {} ! []
 
+            Ok (OAuth.Err err) ->
+                Debug.log "GOT ERROR" err |> \_ -> {} ! []
+
+            Err OAuth.Empty ->
+                {} ! []
+
             Ok res ->
                 Debug.log "UNEXPECTED ANSWER" res |> \_ -> {} ! []
 
             Err err ->
-                Debug.log "ERROR" err |> \_ -> {} ! []
+                Debug.log "PARSE ERROR" err |> \_ -> {} ! []
 
     update : Msg -> Model -> ( Model, Cmd Msg )
     update msg model =

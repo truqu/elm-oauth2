@@ -63,13 +63,13 @@ request. A minimalistic setup goes like this:
             Login res ->
                 case res of
                     Ok (OAuth.OkToken token) ->
-                        Debug.log "GOT TOKEN" token |> \_ -> model ! []
+                        Debug.log "GOT TOKEN" token |> \_ -> {} ! []
 
                     Ok res ->
-                        Debug.log "UNEXPECTED ANSWER" res |> \_ -> model ! []
+                        Debug.log "UNEXPECTED ANSWER" res |> \_ -> {} ! []
 
                     Err err ->
-                        Debug.log "HTTP ERROR" err |> \_ -> model ! []
+                        Debug.log "HTTP ERROR" err |> \_ -> {} ! []
 
     view : Model -> Html Msg
     view _ =
