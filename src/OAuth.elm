@@ -9,6 +9,7 @@ module OAuth
         , Response(..)
         , Token(..)
         , errorFromString
+        , showError
         , showResponseType
         , showToken
         , use
@@ -53,7 +54,7 @@ used.
 
 ## Responses
 
-@docs Response, Token, ParseError, Error, showToken, errorFromString
+@docs Response, Token, ParseError, Error, showToken, showError, errorFromString
 
 -}
 
@@ -254,9 +255,6 @@ type Token
 
 
 {-| Use a token to authenticate a request.
-
-NOTE: This method is highly likely to change in the future with the introduction of `Mac` tokens
-
 -}
 use : Token -> List Http.Header -> List Http.Header
 use token =
@@ -276,13 +274,40 @@ showResponseType r =
 
 
 {-| Gets the `String` representation of a `Token`.
-
-NOTE: This method is highly likely to change in the future with the introduction of `Mac` tokens
-
 -}
 showToken : Token -> String
 showToken (Bearer t) =
     "Bearer " ++ t
+
+
+{-| Gets the `String` representation of an `Error`.
+-}
+showError : Error -> String
+showError err =
+    case err of
+        InvalidRequest ->
+            "invalid_request"
+
+        UnauthorizedClient ->
+            "unauthorized_client"
+
+        AccessDenied ->
+            "access_denied"
+
+        UnsupportedResponseType ->
+            "unsupported_response_type"
+
+        InvalidScope ->
+            "invalid_scope"
+
+        ServerError ->
+            "server_error"
+
+        TemporarilyUnavailable ->
+            "temporarily_unavailable"
+
+        Unknown ->
+            "unknown"
 
 
 {-| Attempts to parse a `String` into an `Error` code. Will parse to `Unknown` when the string
