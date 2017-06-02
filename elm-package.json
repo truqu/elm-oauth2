@@ -1,5 +1,5 @@
 {
-    "version": "2.0.1",
+    "version": "2.0.2",
     "summary": "OAuth 2.0 client-side utils",
     "repository": "https://github.com/truqu/elm-oauth2.git",
     "license": "BSD3",
