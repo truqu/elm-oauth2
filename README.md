@@ -74,17 +74,16 @@ init location =
         model = {}
     in
         case OAuth.Implicit.parse location of
-            
+            -- A token has been parsed 
+            Ok { token } ->
+                { model | token = Just token } ! [] 
+
             -- Nothing to parse, unauthenticated
             Err OAuth.Empty ->
                 model ! []
 
-            -- A token has been parsed 
-            Ok (OAuth.OkToken { token }) ->
-                { model | token = Just token } ! [] 
-
-            -- An error or, an authorization code has been parsed
-            Ok _ ->
+            -- An other type of error (invalid parsing or an actual OAuth error) 
+            Err _ ->
                 model ! []
 ```
 
@@ -149,11 +148,7 @@ update msg model =
                   model ! []
 
                 -- Token received from the server
-                Ok (OAuth.OkToken { token }) ->
-                  
-                -- Something else received from the server
-                Ok _ ->
-                    model ! []
+                Ok { token } ->
 
 ```
 
@@ -166,13 +161,8 @@ init location =
         model = {}
     in
         case OAuth.AuthorizationCode.parse location of
-            
-            -- Nothing to parse, unauthenticated
-            Err OAuth.Empty ->
-                model ! []
-
             -- A token has been parsed 
-            Ok (OAuth.OkCode { code }) ->
+            Ok { code } ->
                 let 
                     req =
                         OAuth.AuthorizationCode.authenticate <|
@@ -187,9 +177,12 @@ init location =
                 in
                     model [ Http.send Authenticate req ]
 
+            -- Nothing to parse, unauthenticated
+            Err OAuth.Empty ->
+                model ! []
 
-            -- An error or, an authorization code has been parsed
-            Ok _ ->
+            -- An other type of error (invalid parsing or an actual OAuth error) 
+            Err _ ->
                 model ! []
 ```
 
