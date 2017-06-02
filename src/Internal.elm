@@ -214,7 +214,12 @@ parseAuthorizationCode code state =
 
 qsAddList : String -> List String -> QS.QueryString -> QS.QueryString
 qsAddList param xs qs =
-    QS.add param (String.join " " xs) qs
+    case xs of
+        [] ->
+            qs
+
+        _ ->
+            QS.add param (String.join " " xs) qs
 
 
 qsAddMaybe : String -> Maybe String -> QS.QueryString -> QS.QueryString
