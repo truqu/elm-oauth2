@@ -76,7 +76,7 @@ type Msg
     | UpdateSecret String
     | Authorize
     | GetProfile (Result Http.Error Profile)
-    | Authenticate (Result Http.Error OAuth.Response)
+    | Authenticate (Result Http.Error OAuth.ResponseToken)
 
 
 main : Program Never Model Msg
@@ -115,10 +115,7 @@ init location =
             }
     in
         case OAuth.AuthorizationCode.parse location of
-            Err OAuth.Empty ->
-                model ! []
-
-            Ok (OAuth.OkCode { code, state }) ->
+            Ok { code, state } ->
                 let
                     ( clientId, secret ) =
                         state
@@ -141,12 +138,11 @@ init location =
                           , Http.send Authenticate req
                           ]
 
-            Ok (OAuth.Err err) ->
-                { model | error = Just <| OAuth.showError err.error }
-                    ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+            Err OAuth.Empty ->
+                model ! []
 
-            Ok _ ->
-                { model | error = Just "unexpected answer from server" }
+            Err (OAuth.OAuthErr err) ->
+                { model | error = Just <| OAuth.showErrCode err.error }
                     ! [ Navigation.modifyUrl model.oauth.redirectUri ]
 
             Err _ ->
@@ -186,7 +182,7 @@ update msg ({ oauth } as model) =
                 Err err ->
                     { model | error = Just "unable to authenticate ¯\\_(ツ)_/¯" } ! []
 
-                Ok (OAuth.OkToken { token }) ->
+                Ok { token } ->
                     let
                         req =
                             Http.request
@@ -202,9 +198,6 @@ update msg ({ oauth } as model) =
                         { model | token = Just token }
                             ! [ Http.send GetProfile req
                               ]
-
-                Ok _ ->
-                    { model | error = Just "unexpected answer from server" } ! []
 
         GetProfile res ->
             case res of

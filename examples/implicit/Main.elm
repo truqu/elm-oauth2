@@ -104,10 +104,7 @@ init location =
             }
     in
         case OAuth.Implicit.parse location of
-            Err OAuth.Empty ->
-                model ! []
-
-            Ok (OAuth.OkToken { token }) ->
+            Ok { token } ->
                 let
                     req =
                         Http.request
@@ -125,12 +122,11 @@ init location =
                           , Http.send GetProfile req
                           ]
 
-            Ok (OAuth.Err err) ->
-                { model | error = Just <| OAuth.showError err.error }
-                    ! [ Navigation.modifyUrl model.oauth.redirectUri ]
+            Err OAuth.Empty ->
+                model ! []
 
-            Ok _ ->
-                { model | error = Just "unexpected answer from server" }
+            Err (OAuth.OAuthErr err) ->
+                { model | error = Just <| OAuth.showErrCode err.error }
                     ! [ Navigation.modifyUrl model.oauth.redirectUri ]
 
             Err _ ->
