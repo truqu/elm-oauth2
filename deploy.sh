@@ -29,4 +29,4 @@ done
 git add . && git commit -m "release version $version"
 git push origin HEAD && git checkout -
 
-echo -e "==========\nDONE."
+echo "==========\nDONE."
