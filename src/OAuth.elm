@@ -3,14 +3,16 @@ module OAuth
         ( Authorization
         , Authentication(..)
         , Credentials
-        , Error(..)
-        , ParseError(..)
+        , Err
+        , ErrCode(..)
+        , ParseErr(..)
         , ResponseType(..)
-        , Response(..)
+        , ResponseToken
+        , ResponseCode
         , Token(..)
-        , errorFromString
-        , errorDecoder
-        , showError
+        , errCodeFromString
+        , errDecoder
+        , showErrCode
         , showResponseType
         , showToken
         , use
@@ -55,7 +57,7 @@ used.
 
 ## Responses
 
-@docs Response, Token, ParseError, Error, showToken, showError, errorFromString, errorDecoder
+@docs ResponseToken, ResponseCode, Token, Err, ParseErr, ErrCode, showToken, showErrCode, errCodeFromString, errDecoder
 
 -}
 
@@ -171,40 +173,47 @@ type ResponseType
     | Token
 
 
-{-| The response obtained as a result of an authorization or authentication. `OkCode` can only be
-encountered after an authorization.
+{-| The response obtained as a result of an authentication (implicit or not)
 -}
-type Response
-    = OkToken
-        { expiresIn : Maybe Int
-        , refreshToken : Maybe Token
-        , scope : List String
-        , state : Maybe String
-        , token : Token
-        }
-    | OkCode
-        { code : String
-        , state : Maybe String
-        }
-    | Err
-        { error : Error
-        , errorDescription : Maybe String
-        , errorUri : Maybe String
-        , state : Maybe String
-        }
+type alias ResponseToken =
+    { expiresIn : Maybe Int
+    , refreshToken : Maybe Token
+    , scope : List String
+    , state : Maybe String
+    , token : Token
+    }
+
+
+{-| The response obtained as a result of an authorization
+-}
+type alias ResponseCode =
+    { code : String
+    , state : Maybe String
+    }
 
 
 {-| Describes errors coming from attempting to parse a url after an OAuth redirection
 
   - Empty: means there were nothing (related to OAuth 2.0) to parse
+  - OAuthErr: a successfully parsed OAuth 2.0 error
   - Missing: means the OAuth provider didn't with all the required parameters for the given grant type.
   - Invalid: means the OAuth provider did reply with an invalid parameter for the given grant type.
 
 -}
-type ParseError
+type ParseErr
     = Empty
+    | OAuthErr Err
     | Missing (List String)
     | Invalid (List String)
+
+
+{-| -}
+type alias Err =
+    { error : ErrCode
+    , errorDescription : Maybe String
+    , errorUri : Maybe String
+    , state : Maybe String
+    }
 
 
 {-| Describes an OAuth error response [4.1.2.1](https://tools.ietf.org/html/rfc6749#section-4.1.2.1)
@@ -233,7 +242,7 @@ type ParseError
   - Unknown: The server returned an unknown error code.
 
 -}
-type Error
+type ErrCode
     = InvalidRequest
     | UnauthorizedClient
     | AccessDenied
@@ -282,10 +291,10 @@ showToken (Bearer t) =
     "Bearer " ++ t
 
 
-{-| Gets the `String` representation of an `Error`.
+{-| Gets the `String` representation of an `ErrCode`.
 -}
-showError : Error -> String
-showError err =
+showErrCode : ErrCode -> String
+showErrCode err =
     case err of
         InvalidRequest ->
             "invalid_request"
@@ -312,11 +321,11 @@ showError err =
             "unknown"
 
 
-{-| Attempts to parse a `String` into an `Error` code. Will parse to `Unknown` when the string
+{-| Attempts to parse a `String` into an `ErrCode` code. Will parse to `Unknown` when the string
 isn't recognized.
 -}
-errorFromString : String -> Error
-errorFromString str =
+errCodeFromString : String -> ErrCode
+errCodeFromString str =
     case str of
         "invalid_request" ->
             InvalidRequest
@@ -343,13 +352,20 @@ errorFromString str =
             Unknown
 
 
-{-| A json decoder for response error carried by the `Result Http.Error OAuth.Response` result of
+{-| A json decoder for response error carried by the `Result Http.Error OAuth.ResponseToken` result of
 an http call.
 -}
-errorDecoder : Json.Decoder { error : Error, errorUri : Maybe String, errorDescription : Maybe String }
-errorDecoder =
-    Json.map3
-        (\error errorUri errorDescription -> { error = error, errorUri = errorUri, errorDescription = errorDescription })
-        (Json.map errorFromString <| Json.field "error" Json.string)
+errDecoder : Json.Decoder Err
+errDecoder =
+    Json.map4
+        (\error errorUri errorDescription state ->
+            { error = error
+            , errorUri = errorUri
+            , errorDescription = errorDescription
+            , state = state
+            }
+        )
+        (Json.map errCodeFromString <| Json.field "error" Json.string)
         (Json.maybe <| Json.field "error_uri" Json.string)
         (Json.maybe <| Json.field "error_description" Json.string)
+        (Json.maybe <| Json.field "state" Json.string)

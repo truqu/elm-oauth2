@@ -33,6 +33,6 @@ import Http as Http
 In this case, use the `ClientCredentials` constructor.
 
 -}
-authenticate : Authentication -> Http.Request Response
+authenticate : Authentication -> Http.Request ResponseToken
 authenticate =
     Internal.authenticate

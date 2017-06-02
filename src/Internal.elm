@@ -23,7 +23,7 @@ authorize { clientId, url, redirectUri, responseType, scope, state } =
         Navigation.load (url ++ qs)
 
 
-authenticate : Authentication -> Http.Request Response
+authenticate : Authentication -> Http.Request ResponseToken
 authenticate authentication =
     case authentication of
         AuthorizationCode { credentials, code, redirectUri, scope, state, url } ->
@@ -101,7 +101,7 @@ authenticate authentication =
                 makeRequest url headers body
 
 
-makeRequest : String -> List Http.Header -> String -> Http.Request Response
+makeRequest : String -> List Http.Header -> String -> Http.Request ResponseToken
 makeRequest url headers body =
     Http.request
         { method = "POST"
@@ -123,18 +123,17 @@ authHeader credentials =
         |> Maybe.withDefault []
 
 
-decoder : Json.Decoder Response
+decoder : Json.Decoder ResponseToken
 decoder =
     Json.oneOf
         [ Json.map5
             (\token expiresIn refreshToken scope state ->
-                OkToken
-                    { token = token
-                    , expiresIn = expiresIn
-                    , refreshToken = refreshToken
-                    , scope = Maybe.withDefault [] scope
-                    , state = state
-                    }
+                { token = token
+                , expiresIn = expiresIn
+                , refreshToken = refreshToken
+                , scope = Maybe.withDefault [] scope
+                , state = state
+                }
             )
             accessTokenDecoder
             (Json.maybe <| Json.field "expires_in" Json.int)
@@ -175,29 +174,28 @@ makeToken mtoken tokenType =
             Nothing
 
 
-parseError : String -> Maybe String -> Maybe String -> Maybe String -> Result ParseError Response
+parseError : String -> Maybe String -> Maybe String -> Maybe String -> Result ParseErr a
 parseError error errorDescription errorUri state =
-    Ok <|
-        OAuth.Err
-            { error = errorFromString error
+    Result.Err <|
+        OAuthErr
+            { error = errCodeFromString error
             , errorDescription = errorDescription
             , errorUri = errorUri
             , state = state
             }
 
 
-parseToken : String -> Maybe String -> Maybe Int -> List String -> Maybe String -> Result ParseError Response
+parseToken : String -> Maybe String -> Maybe Int -> List String -> Maybe String -> Result ParseErr ResponseToken
 parseToken accessToken mTokenType mExpiresIn scope state =
     case ( Maybe.map String.toLower mTokenType, mExpiresIn ) of
         ( Just "bearer", mExpiresIn ) ->
             Ok <|
-                OkToken
-                    { expiresIn = mExpiresIn
-                    , refreshToken = Nothing
-                    , scope = scope
-                    , state = state
-                    , token = Bearer accessToken
-                    }
+                { expiresIn = mExpiresIn
+                , refreshToken = Nothing
+                , scope = scope
+                , state = state
+                , token = Bearer accessToken
+                }
 
         ( Just _, _ ) ->
             Result.Err <| Invalid [ "token_type" ]
@@ -206,13 +204,12 @@ parseToken accessToken mTokenType mExpiresIn scope state =
             Result.Err <| Missing [ "token_type" ]
 
 
-parseAuthorizationCode : String -> Maybe String -> Result ParseError Response
+parseAuthorizationCode : String -> Maybe String -> Result a ResponseCode
 parseAuthorizationCode code state =
     Ok <|
-        OkCode
-            { code = code
-            , state = state
-            }
+        { code = code
+        , state = state
+        }
 
 
 qsAddList : String -> List String -> QS.QueryString -> QS.QueryString

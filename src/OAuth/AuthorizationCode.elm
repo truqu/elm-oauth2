@@ -56,7 +56,7 @@ authorize =
 In this case, use the `AuthorizationCode` constructor.
 
 -}
-authenticate : Authentication -> Http.Request Response
+authenticate : Authentication -> Http.Request ResponseToken
 authenticate =
     Internal.authenticate
 
@@ -64,10 +64,10 @@ authenticate =
 {-| Parse the location looking for a parameters set by the resource provider server after
 redirecting the resource owner (user).
 
-Fails with `Empty` when there's nothing
+Fails with a `ParseErr Empty` when there's nothing
 
 -}
-parse : Navigation.Location -> Result ParseError Response
+parse : Navigation.Location -> Result ParseErr ResponseCode
 parse { search } =
     let
         qs =

@@ -44,10 +44,10 @@ authorize =
 {-| Parse the location looking for a parameters set by the resource provider server after
 redirecting the resource owner (user).
 
-Fails with `Empty` when there's nothing
+Fails with `ParseErr Empty` when there's nothing
 
 -}
-parse : Navigation.Location -> Result ParseError Response
+parse : Navigation.Location -> Result ParseErr ResponseToken
 parse { hash } =
     let
         qs =
