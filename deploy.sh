@@ -17,7 +17,7 @@ fi
 
 git tag -a $version -m "release version $version" && git push origin HEAD --tags
 elm package publish || exit 1
-git checkout -b "gh-pages" || exit 1
+git checkout "gh-pages" || exit 1
 
 for d in examples/*; do
   if [ "$d" != "examples/images" ]; then
@@ -26,7 +26,7 @@ for d in examples/*; do
   fi
 done
 
-git add . && git commit -m "release version $version" || exit 1
-git push origin HEAD && git checkout - || exit 1
+git add . && git commit -m "release version $version"
+git push origin HEAD && git checkout -
 
 echo -e "==========\nDONE."
