@@ -1,8 +1,8 @@
 {
-    "version": "2.0.2",
+    "version": "2.0.3",
     "summary": "OAuth 2.0 client-side utils",
     "repository": "https://github.com/truqu/elm-oauth2.git",
-    "license": "BSD3",
+    "license": "MIT",
     "source-directories": [
         "src",
         "examples/implicit",
