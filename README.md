@@ -33,7 +33,7 @@ elm package install truqu/elm-oauth2
 ### Usage (Implicit Flow)
 
 A complete example is available [here](https://truqu.github.io/elm-oauth2/examples/implicit)
-(with the corresponding sources [here](https://github.com/truqu/elm-oauth2/tree/master/examples/implicit"))
+(with the corresponding sources [here](https://github.com/truqu/elm-oauth2/tree/master/examples/implicit))
 
 
 ##### Imports
@@ -45,7 +45,7 @@ import OAuth.Implicit
 
 ##### Authorizing & Authenticating
 
-```
+```elm
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -90,7 +90,7 @@ init location =
 
 ##### Using the token
 
-```
+```elm
 let
     req =
         Http.request
@@ -111,7 +111,7 @@ in
 
 A complete example is available
 [here](https://truqu.github.io/elm-oauth2/examples/authorization_code)
-(with the corresponding sources [here](https://github.com/truqu/elm-oauth2/tree/master/examples/authorization_code"))
+(with the corresponding sources [here](https://github.com/truqu/elm-oauth2/tree/master/examples/authorization_code))
 
 
 ##### Imports
@@ -122,7 +122,7 @@ import OAuth.AuthorizationCode
 
 ##### Authorizing & Authenticating
 
-```
+```elm
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -189,7 +189,7 @@ init location =
 
 ##### Using the token
 
-```
+```elm
 let
     req =
         Http.request
