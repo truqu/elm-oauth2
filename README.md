@@ -2,21 +2,21 @@ Elm OAuth 2 [![](https://img.shields.io/badge/doc-elm-60b5cc.svg?style=flat-squa
 =====
 
 This package offers some utilities to implement a client-side [OAuth
-2](https://tools.ietf.org/html/rfc6749) authentication in Elm. It
+2](https://tools.ietf.org/html/rfc6749) authorization in Elm. It
 covers all 4 grant types: 
 
-- [Implicit](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth.Implicit):
+- [Implicit](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth-Implicit):
   The most commonly used. The token is obtained directly as a result of a user redirection to
   an OAuth provider.
 
-- [Authorization Code](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth.AuthorizationCode):
+- [Authorization Code](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth-AuthorizationCode):
   The token is obtained as a result of an authentication, from a code obtained as a result of a
   user redirection to an OAuth provider.
 
-- [Resource Owner Password Credentials](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth.Password):
+- [Resource Owner Password Credentials](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth-Password):
   The token is obtained directly by exchanging the user credentials with an OAuth provider.
 
-- [Client Credentials](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth.ClientCredentials):
+- [Client Credentials](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth-ClientCredentials):
   The token is obtained directly by exchanging application credentials with an OAuth provider.
 
 ## Getting Started
