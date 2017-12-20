@@ -121,7 +121,18 @@ authHeader credentials =
         |> Maybe.andThen Result.toMaybe
         |> Maybe.map (\s -> [ Http.header "Authorization" ("Basic " ++ s) ])
         |> Maybe.withDefault []
+        -- GitHub requires this header, or it URL-encodes the result
+        |> (::) (Http.header "accept" "application/json")
 
+
+
+scopeDecoder : Json.Decoder (List String)
+scopeDecoder =
+    Json.oneOf
+        [ Json.list Json.string
+        -- GitHub returns a comma-separated string, instead of a list of strings.
+        , Json.map (String.split ",") Json.string
+        ]
 
 decoder : Json.Decoder ResponseToken
 decoder =
@@ -138,7 +149,7 @@ decoder =
             accessTokenDecoder
             (Json.maybe <| Json.field "expires_in" Json.int)
             refreshTokenDecoder
-            (Json.maybe <| Json.field "scope" (Json.list Json.string))
+            (Json.maybe <| Json.field "scope" scopeDecoder)
             (Json.maybe <| Json.field "state" Json.string)
         ]
 
