@@ -207,7 +207,7 @@ in
 
 ### TroubleShooting
 
-##### Interating with GitHub
+##### Interacting with GitHub
 
 GitHub API v3 supports the [Authorization Code Flow](https://developer.github.com/apps/building-oauth-apps/authorization-options-for-oauth-apps/#web-application-flow) 
 in order to obtain access tokens for a registered application. However, the implementation 
@@ -268,3 +268,8 @@ getToken code =
     in
         Http.send handleResponse req
 ```
+
+## Changelog
+
+[CHANGELOG.md](./CHANGELOG.md)
+
