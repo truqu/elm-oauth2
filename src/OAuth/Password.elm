@@ -1,6 +1,7 @@
 module OAuth.Password
     exposing
         ( authenticate
+        , authenticateWithOpts
         )
 
 {-| The resource owner password credentials grant type is suitable in
@@ -20,7 +21,7 @@ request.
 
 ## Authenticate
 
-@docs authenticate
+@docs authenticate, authenticateWithOpts
 
 -}
 

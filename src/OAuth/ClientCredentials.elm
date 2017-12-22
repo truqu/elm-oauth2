@@ -1,6 +1,7 @@
 module OAuth.ClientCredentials
     exposing
         ( authenticate
+        , authenticateWithOpts
         )
 
 {-| The client can request an access token using only its client
@@ -19,7 +20,7 @@ request.
 
 ## Authenticate
 
-@docs authenticate
+@docs authenticate, authenticateWithOpts
 
 -}
 

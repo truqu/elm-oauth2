@@ -2,6 +2,7 @@ module OAuth.AuthorizationCode
     exposing
         ( authorize
         , authenticate
+        , authenticateWithOpts
         , parse
         )
 
@@ -29,7 +30,7 @@ request.
 
 ## Authenticate
 
-@docs authenticate
+@docs authenticate, authenticateWithOpts
 
 -}
 
