@@ -13,7 +13,8 @@
         "OAuth.AuthorizationCode",
         "OAuth.Implicit",
         "OAuth.ClientCredentials",
-        "OAuth.Password"
+        "OAuth.Password",
+        "OAuth.Decode"
     ],
     "dependencies": {
         "Bogdanp/elm-querystring": "1.0.0 <= v < 2.0.0",
