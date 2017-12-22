@@ -1,10 +1,10 @@
 module Internal exposing (..)
 
 import OAuth exposing (..)
+import OAuth.Decode exposing (..)
 import Http as Http
 import QueryString as QS
 import Navigation as Navigation
-import Json.Decode as Json
 import Base64
 
 
@@ -23,8 +23,8 @@ authorize { clientId, url, redirectUri, responseType, scope, state } =
         Navigation.load (url ++ qs)
 
 
-authenticate : Authentication -> Http.Request ResponseToken
-authenticate authentication =
+authenticate : AdjustRequest ResponseToken -> Authentication -> Http.Request ResponseToken
+authenticate adjust authentication =
     case authentication of
         AuthorizationCode { credentials, code, redirectUri, scope, state, url } ->
             let
@@ -46,7 +46,7 @@ authenticate authentication =
                         else
                             Just credentials
             in
-                makeRequest url headers body
+                makeRequest adjust url headers body
 
         ClientCredentials { credentials, scope, state, url } ->
             let
@@ -61,7 +61,7 @@ authenticate authentication =
                 headers =
                     authHeader (Just { clientId = credentials.clientId, secret = credentials.secret })
             in
-                makeRequest url headers body
+                makeRequest adjust url headers body
 
         Password { credentials, password, scope, state, url, username } ->
             let
@@ -78,7 +78,7 @@ authenticate authentication =
                 headers =
                     authHeader credentials
             in
-                makeRequest url headers body
+                makeRequest adjust url headers body
 
         Refresh { credentials, scope, token, url } ->
             let
@@ -98,20 +98,25 @@ authenticate authentication =
                 headers =
                     authHeader credentials
             in
-                makeRequest url headers body
+                makeRequest adjust url headers body
 
 
-makeRequest : String -> List Http.Header -> String -> Http.Request ResponseToken
-makeRequest url headers body =
-    Http.request
-        { method = "POST"
-        , headers = headers
-        , url = url
-        , body = Http.stringBody "application/x-www-form-urlencoded" body
-        , expect = Http.expectJson decoder
-        , timeout = Nothing
-        , withCredentials = False
-        }
+makeRequest : AdjustRequest ResponseToken -> String -> List Http.Header -> String -> Http.Request ResponseToken
+makeRequest adjust url headers body =
+    let
+        requestParts =
+            { method = "POST"
+            , headers = headers
+            , url = url
+            , body = Http.stringBody "application/x-www-form-urlencoded" body
+            , expect = Http.expectJson responseDecoder
+            , timeout = Nothing
+            , withCredentials = False
+            }
+    in
+        requestParts
+            |> adjust
+            |> Http.request
 
 
 authHeader : Maybe Credentials -> List Http.Header
@@ -121,57 +126,6 @@ authHeader credentials =
         |> Maybe.andThen Result.toMaybe
         |> Maybe.map (\s -> [ Http.header "Authorization" ("Basic " ++ s) ])
         |> Maybe.withDefault []
-
-
-decoder : Json.Decoder ResponseToken
-decoder =
-    Json.oneOf
-        [ Json.map5
-            (\token expiresIn refreshToken scope state ->
-                { token = token
-                , expiresIn = expiresIn
-                , refreshToken = refreshToken
-                , scope = Maybe.withDefault [] scope
-                , state = state
-                }
-            )
-            accessTokenDecoder
-            (Json.maybe <| Json.field "expires_in" Json.int)
-            refreshTokenDecoder
-            (Json.maybe <| Json.field "scope" (Json.list Json.string))
-            (Json.maybe <| Json.field "state" Json.string)
-        ]
-
-
-accessTokenDecoder : Json.Decoder Token
-accessTokenDecoder =
-    let
-        mtoken =
-            Json.map2 makeToken
-                (Json.field "access_token" Json.string |> Json.map Just)
-                (Json.field "token_type" Json.string)
-
-        failUnless =
-            Maybe.map Json.succeed >> Maybe.withDefault (Json.fail "can't decode token")
-    in
-        Json.andThen failUnless mtoken
-
-
-refreshTokenDecoder : Json.Decoder (Maybe Token)
-refreshTokenDecoder =
-    Json.map2 makeToken
-        (Json.maybe <| Json.field "refresh_token" Json.string)
-        (Json.field "token_type" Json.string)
-
-
-makeToken : Maybe String -> String -> Maybe Token
-makeToken mtoken tokenType =
-    case ( mtoken, String.toLower tokenType ) of
-        ( Just token, "bearer" ) ->
-            Just <| Bearer token
-
-        _ ->
-            Nothing
 
 
 parseError : String -> Maybe String -> Maybe String -> Maybe String -> Result ParseErr a
