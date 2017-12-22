@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.2.0 (2017-12-22)
+
+- (oversight) Actually expose 'authenticateWithOpts' functions from modules
+
 ## v2.1.0 (2017-12-22)
 
 - Expose internal Json decoders 
