@@ -244,7 +244,7 @@ adjustRequest : AdjustRequest ResponseToken
 adjustRequest req =
     let
         headers =
-            [ Http.header "Accept" ("application/json") ] :: req.headers
+            Http.header "Accept" ("application/json")  :: req.headers
 
         expect =
             Http.expectJson lenientResponseDecoder
