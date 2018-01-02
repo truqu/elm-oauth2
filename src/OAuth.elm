@@ -192,6 +192,7 @@ authentication and directly retrieve a `Token` from the authorization.
 type ResponseType
     = Code
     | Token
+    | IDToken
 
 
 {-| The response obtained as a result of an authentication (implicit or not)
@@ -354,6 +355,9 @@ showResponseType r =
 
         Token ->
             "token"
+
+        IDToken ->
+            "id_token"
 
 
 {-| Gets the `String` representation of a `Token`.
