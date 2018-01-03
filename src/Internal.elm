@@ -6,7 +6,6 @@ import Http as Http
 import QueryString as QS
 import Navigation as Navigation
 import Base64
-import Json.Decode as JsonD
 
 
 authorize : Authorization -> Cmd msg
@@ -165,7 +164,7 @@ parseIDToken idToken =
         [ part0, part1, signature ] ->
             case Base64.decode part1 of
                 Ok payload ->
-                    case JsonD.decodeString decodeJWTPayload payload of
+                    case decodeJWTPayloadString payload of
                         Ok token ->
                             Result.Ok { token | token = Bearer idToken }
 
@@ -205,10 +204,3 @@ qsAddMaybe param ms qs =
 
         Just s ->
             QS.add param s qs
-
-
-decodeJWTPayload : JsonD.Decoder ResponseToken
-decodeJWTPayload =
-    JsonD.maybe (JsonD.field "exp" JsonD.int)
-        |> JsonD.andThen
-            (\exp -> JsonD.succeed <| ResponseToken exp Nothing [] Nothing (Bearer ""))

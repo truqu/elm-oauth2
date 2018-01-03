@@ -10,8 +10,10 @@ module OAuth
         , ResponseToken
         , ResponseCode
         , Token(..)
+        , decodeJWTPayloadString
         , errCodeFromString
         , errDecoder
+        , jwtPayloadDecoder
         , showErrCode
         , showResponseType
         , showToken
@@ -57,7 +59,7 @@ used.
 
 ## Responses
 
-@docs ResponseToken, ResponseCode, Token, Err, ParseErr, ErrCode, showToken, showErrCode, errCodeFromString, errDecoder
+@docs ResponseToken, ResponseCode, Token, Err, ParseErr, ErrCode, showToken, showErrCode, errCodeFromString, errDecoder, jwtPayloadDecoder, decodeJWTPayloadString
 
 -}
 
@@ -445,3 +447,19 @@ errDecoder =
         (Json.maybe <| Json.field "error_uri" Json.string)
         (Json.maybe <| Json.field "error_description" Json.string)
         (Json.maybe <| Json.field "state" Json.string)
+
+
+{-| A json decoder for JWT
+-}
+jwtPayloadDecoder : Json.Decoder ResponseToken
+jwtPayloadDecoder =
+    Json.maybe (Json.field "exp" Json.int)
+        |> Json.andThen
+            (\exp -> Json.succeed <| ResponseToken exp Nothing [] Nothing (Bearer ""))
+
+
+{-| Parse a json JWT payload
+-}
+decodeJWTPayloadString : String -> Result String ResponseToken
+decodeJWTPayloadString =
+    Json.decodeString jwtPayloadDecoder
