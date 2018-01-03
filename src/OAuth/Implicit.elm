@@ -59,8 +59,8 @@ parse { hash } =
         geti =
             flip (QS.one QS.int) qs
     in
-        case ( gets "access_token", gets "error" ) of
-            ( Just accessToken, _ ) ->
+        case ( gets "access_token", gets "id_token", gets "error" ) of
+            ( Just accessToken, _, _ ) ->
                 Internal.parseToken
                     accessToken
                     (gets "token_type")
@@ -68,7 +68,11 @@ parse { hash } =
                     (QS.all "scope" qs)
                     (gets "state")
 
-            ( _, Just error ) ->
+            ( _, Just idToken, _ ) ->
+                Internal.parseIDToken
+                    idToken
+
+            ( _, _, Just error ) ->
                 Internal.parseError
                     error
                     (gets "error_description")

@@ -6,6 +6,7 @@ import Http as Http
 import QueryString as QS
 import Navigation as Navigation
 import Base64
+import Json.Decode as JsonD
 
 
 authorize : Authorization -> Cmd msg
@@ -158,6 +159,26 @@ parseToken accessToken mTokenType mExpiresIn scope state =
             Result.Err <| Missing [ "token_type" ]
 
 
+parseIDToken : String -> Result ParseErr ResponseToken
+parseIDToken idToken =
+    case String.split "." idToken of
+        [ part0, part1, signature ] ->
+            case Base64.decode part1 of
+                Ok payload ->
+                    case JsonD.decodeString decodeJWTPayload payload of
+                        Ok token ->
+                            Result.Ok { token | token = Bearer idToken }
+
+                        Err err ->
+                            Result.Err <| Invalid [ "jwt part1: " ++ err ]
+
+                Err err ->
+                    Result.Err <| Invalid [ "jwt part1: " ++ err ]
+
+        _ ->
+            Result.Err <| Invalid [ "id_token" ]
+
+
 parseAuthorizationCode : String -> Maybe String -> Result a ResponseCode
 parseAuthorizationCode code state =
     Ok <|
@@ -184,3 +205,10 @@ qsAddMaybe param ms qs =
 
         Just s ->
             QS.add param s qs
+
+
+decodeJWTPayload : JsonD.Decoder ResponseToken
+decodeJWTPayload =
+    JsonD.maybe (JsonD.field "exp" JsonD.int)
+        |> JsonD.andThen
+            (\exp -> JsonD.succeed <| ResponseToken exp Nothing [] Nothing (Bearer ""))
