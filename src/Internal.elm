@@ -158,6 +158,26 @@ parseToken accessToken mTokenType mExpiresIn scope state =
             Result.Err <| Missing [ "token_type" ]
 
 
+parseIDToken : String -> Result ParseErr ResponseToken
+parseIDToken idToken =
+    case String.split "." idToken of
+        [ part0, part1, signature ] ->
+            case base64Decode part1 of
+                Ok payload ->
+                    case decodeJWTPayloadString payload of
+                        Ok token ->
+                            Result.Ok { token | token = Bearer idToken }
+
+                        Err err ->
+                            Result.Err <| Invalid [ "jwt part1: " ++ err ]
+
+                Err err ->
+                    Result.Err <| Invalid [ "jwt part1: " ++ err ]
+
+        _ ->
+            Result.Err <| Invalid [ "id_token" ]
+
+
 parseAuthorizationCode : String -> Maybe String -> Result a ResponseCode
 parseAuthorizationCode code state =
     Ok <|
@@ -184,3 +204,17 @@ qsAddMaybe param ms qs =
 
         Just s ->
             QS.add param s qs
+
+
+base64Decode : String -> Result String String
+base64Decode data =
+    case Base64.decode data of
+        Ok payload ->
+            -- The payload may have an extra "\0" char due to base64 decode
+            if not (String.endsWith "}" payload) then
+                Ok <| String.dropRight 1 payload
+            else
+                Ok payload
+
+        Err err ->
+            Result.Err err
