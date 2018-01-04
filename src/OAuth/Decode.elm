@@ -14,7 +14,7 @@ requests made to the Authorization Server and cope with implementation quirks.
 
 ## Json Decoders
 
-@docs responseDecoder, expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder
+@docs responseDecoder, expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder, jwtPayloadDecoder, decodeJWTPayloadString
 
 
 ## Constructors
@@ -168,3 +168,19 @@ makeToken mtoken tokenType =
 
         _ ->
             Nothing
+
+
+{-| A json decoder for JWT
+-}
+jwtPayloadDecoder : Json.Decoder ResponseToken
+jwtPayloadDecoder =
+    Json.maybe (Json.field "exp" Json.int)
+        |> Json.andThen
+            (\exp -> Json.succeed <| ResponseToken exp Nothing [] Nothing (Bearer ""))
+
+
+{-| Parse a json JWT payload
+-}
+decodeJWTPayloadString : String -> Result String ResponseToken
+decodeJWTPayloadString =
+    Json.decodeString jwtPayloadDecoder
