@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.2.1 (2018-08-16) 
+
+- Bump `elm-base64` version upper-bound
+
 ## v2.2.0 (2017-12-22)
 
 - (oversight) Actually expose 'authenticateWithOpts' functions from modules

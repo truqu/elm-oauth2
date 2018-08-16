@@ -123,7 +123,6 @@ authHeader : Maybe Credentials -> List Http.Header
 authHeader credentials =
     credentials
         |> Maybe.map (\{ clientId, secret } -> Base64.encode (clientId ++ ":" ++ secret))
-        |> Maybe.andThen Result.toMaybe
         |> Maybe.map (\s -> [ Http.header "Authorization" ("Basic " ++ s) ])
         |> Maybe.withDefault []
 
