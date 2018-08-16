@@ -375,7 +375,6 @@ view model =
 encodeCredentials : ( String, String ) -> String
 encodeCredentials ( a, b ) =
     Base64.encode (a ++ "&" ++ b)
-        |> Result.withDefault ""
 
 
 decodeCredentials : String -> ( String, String )
