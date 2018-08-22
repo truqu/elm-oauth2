@@ -1,4 +1,8 @@
-module OAuth.Decode exposing (..)
+module OAuth.Decode exposing
+    ( RequestParts, AdjustRequest
+    , responseDecoder, expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder
+    , makeToken, makeResponseToken
+    )
 
 {-| This module exposes decoders and helpers to fine tune some requests when necessary.
 
@@ -23,10 +27,9 @@ requests made to the Authorization Server and cope with implementation quirks.
 
 -}
 
-import OAuth exposing (..)
-import Json.Decode as Json
 import Http as Http
-import Time exposing (Time)
+import Json.Decode as Json
+import OAuth exposing (..)
 
 
 {-| Parts required to build a request. This record is given to `Http.request` in order
@@ -38,7 +41,7 @@ type alias RequestParts a =
     , url : String
     , body : Http.Body
     , expect : Http.Expect a
-    , timeout : Maybe Time
+    , timeout : Maybe Float
     , withCredentials : Bool
     }
 
@@ -50,7 +53,7 @@ For instance,
 
     adjustRequest : AdjustRequest ResponseToken
     adjustRequest req =
-        { req | headers = [ Http.header "Accept" ("application/json") ] :: req.headers }
+        { req | headers = [ Http.header "Accept" "application/json" ] :: req.headers }
 
 -}
 type alias AdjustRequest a =
@@ -134,7 +137,7 @@ accessTokenDecoder =
         failUnless =
             Maybe.map Json.succeed >> Maybe.withDefault (Json.fail "can't decode token")
     in
-        Json.andThen failUnless mtoken
+    Json.andThen failUnless mtoken
 
 
 {-| Json decoder for a refresh token

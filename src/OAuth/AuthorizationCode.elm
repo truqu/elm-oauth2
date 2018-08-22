@@ -1,10 +1,7 @@
-module OAuth.AuthorizationCode
-    exposing
-        ( authorize
-        , authenticate
-        , authenticateWithOpts
-        , parse
-        )
+module OAuth.AuthorizationCode exposing
+    ( authorize, parse
+    , authenticate, authenticateWithOpts
+    )
 
 {-| The authorization code grant type is used to obtain both access
 tokens and refresh tokens and is optimized for confidential clients.
@@ -34,12 +31,14 @@ request.
 
 -}
 
+import Browser.Navigation as Navigation
+import Http as Http
+import Internal as Internal
 import OAuth exposing (..)
 import OAuth.Decode exposing (..)
-import Navigation as Navigation
-import Internal as Internal
-import QueryString as QS
-import Http as Http
+import Url exposing (Url)
+import Url.Parser as Url exposing ((<?>))
+import Url.Parser.Query as Query
 
 
 {-| Redirects the resource owner (user) to the resource provider server using the specified
@@ -80,27 +79,33 @@ redirecting the resource owner (user).
 Fails with a `ParseErr Empty` when there's nothing
 
 -}
-parse : Navigation.Location -> Result ParseErr ResponseCode
-parse { search } =
+parse : Url -> Result ParseErr ResponseCode
+parse url_ =
     let
-        qs =
-            QS.parse search
+        url =
+            { url_ | path = "/" }
 
-        gets =
-            flip (QS.one QS.string) qs
+        tokenTypeParser =
+            Url.top
+                <?> Query.map2 Tuple.pair (Query.string "code") (Query.string "error")
+
+        authorizationCodeParser code =
+            Url.query <|
+                Query.map (Internal.parseAuthorizationCode code) (Query.string "state")
+
+        errorParser error =
+            Url.query <|
+                Query.map3 (Internal.parseError error)
+                    (Query.string "error_description")
+                    (Query.string "error_url")
+                    (Query.string "state")
     in
-        case ( gets "code", gets "error" ) of
-            ( Just code, _ ) ->
-                Internal.parseAuthorizationCode
-                    code
-                    (gets "state")
+    case Url.parse tokenTypeParser url of
+        Just ( Just code, _ ) ->
+            Maybe.withDefault (Result.Err FailedToParse) <| Url.parse (authorizationCodeParser code) url
 
-            ( _, Just error ) ->
-                Internal.parseError
-                    error
-                    (gets "error_description")
-                    (gets "error_uri")
-                    (gets "state")
+        Just ( _, Just error ) ->
+            Maybe.withDefault (Result.Err FailedToParse) <| Url.parse (errorParser error) url
 
-            _ ->
-                Result.Err Empty
+        _ ->
+            Result.Err Empty
