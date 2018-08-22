@@ -48,10 +48,10 @@ Fails with `ParseErr Empty` when there's nothing
 
 -}
 parse : Navigation.Location -> Result ParseErr ResponseToken
-parse { hash } =
+parse { search } =
     let
         qs =
-            QS.parse ("?" ++ String.dropLeft 1 hash)
+            QS.parse ("?" ++ String.dropLeft 1 search)
 
         gets =
             flip (QS.one QS.string) qs
