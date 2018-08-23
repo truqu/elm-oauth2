@@ -46,64 +46,79 @@ import OAuth.Implicit
 ##### Authorizing & Authenticating
 
 ```elm
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        NoOp ->
-            model ! []
+type alias Model =
+    { oauth :
+        { clientId : String
+        , redirectUri : Url
+        }
+    -- [ ... ]
+    }
 
-        Authorize ->
-            model
-                ! [ OAuth.Implicit.authorize
-                        { clientId = "clientId"
-                        , redirectUri = "redirectUri"
-                        , responseType = OAuth.Token -- Use the OAuth.Token response type
-                        , scope = [ "whatever" ]
-                        , state = Nothing
-                        , url = "authorizationEndpoint"
-                        }
-                  ]
+
+type Msg 
+    = ClientIdSubmitted
+    -- [ ... ]
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg ({ oauth } as model) =
+    case msg of
+        ClientIdSubmitted ->
+            ( model
+            , OAuth.Implicit.authorize
+                { clientId = model.oauth.clientId
+                , redirectUri = model.oauth.redirectUri
+                , responseType = OAuth.Token
+                , scope = [ "email", "profile" ]
+                , state = Nothing
+                , url = authorizationEndpoint
+                }
+            )
+
+        -- [ ... ]
 ```
 
 ##### Parsing the token 
 
 ```elm
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
+init : () -> Url -> Key -> ( Model, Cmd Msg )
+init _ origin navKey =
     let
-        model = {}
+        model =
+            { oauth = { clientId = "", redirectUri = origin }
+            , error = Nothing
+            , token = Nothing
+            , profile = Nothing
+            }
     in
-        case OAuth.Implicit.parse location of
-            -- A token has been parsed 
-            Ok { token } ->
-                { model | token = Just token } ! [] 
+    case OAuth.Implicit.parse origin of
+        Ok { token } ->
+            ( { model | token = Just token }
+            , getUserProfile profileEndpoint token
+            )
 
-            -- Nothing to parse, unauthenticated
-            Err OAuth.Empty ->
-                model ! []
-
-            -- An other type of error (invalid parsing or an actual OAuth error) 
-            Err _ ->
-                model ! []
+        Err err ->
+            ( { model | error = showParseErr err }
+            , Cmd.none
+            )
 ```
 
 
 ##### Using the token
 
 ```elm
-let
-    req =
+getUserProfile : Url -> OAuth.Token -> Cmd Msg
+getUserProfile endpoint token =
+    Http.send GotUserInfo <|
         Http.request
             { method = "GET"
             , body = Http.emptyBody
-            , headers = OAuth.use token [] -- Add the token to the http headers
+            , headers = OAuth.use token []
             , withCredentials = False
-            , url = "whatever"
-            , expect = Http.expectJson decoder
+            , url = Url.toString endpoint
+            , expect = Http.expectJson profileDecoder
             , timeout = Nothing
             }
-in
-    { model | token = Just token } ! [ Http.send handleResponse req ]
 ```
 
 
@@ -272,4 +287,3 @@ getToken code =
 ## Changelog
 
 [CHANGELOG.md](./CHANGELOG.md)
-
