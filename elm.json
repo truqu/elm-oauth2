@@ -1,7 +1,7 @@
 {
     "type": "package",
     "name": "truqu/elm-oauth2",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "license": "MIT",
     "summary": "OAuth 2.0 client-side utils",
     "exposed-modules": [
