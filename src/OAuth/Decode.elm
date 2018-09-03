@@ -1,6 +1,7 @@
 module OAuth.Decode exposing
     ( RequestParts, AdjustRequest
-    , responseDecoder, expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder
+    , responseDecoder, lenientResponseDecoder
+    , expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder
     , makeToken, makeResponseToken
     )
 
@@ -16,9 +17,14 @@ requests made to the Authorization Server and cope with implementation quirks.
 @docs RequestParts, AdjustRequest
 
 
-## Json Decoders
+## Json Response Decoders
 
-@docs responseDecoder, expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder
+@docs responseDecoder, lenientResponseDecoder
+
+
+## Json Field Decoders
+
+@docs expiresInDecoder, scopeDecoder, lenientScopeDecoder, stateDecoder, accessTokenDecoder, refreshTokenDecoder
 
 
 ## Constructors
@@ -88,6 +94,40 @@ responseDecoder =
         expiresInDecoder
         refreshTokenDecoder
         scopeDecoder
+        stateDecoder
+
+
+{-| Json decoder for a response, using the 'lenientScopeDecoder' under the hood. That's probably
+the decoder you want to use when interacting with GitHub OAuth-2.0 API in combination with 'authenticateWithOpts'
+
+    adjustRequest : AdjustRequest ResponseToken
+    adjustRequest req =
+        let
+            headers =
+                Http.header "Accept" "application/json" :: req.headers
+
+            expect =
+                Http.expectJson lenientResponseDecoder
+        in
+        { req | headers = headers, expect = expect }
+
+    getToken : String -> Cmd ResponseToken
+    getToken code =
+        let
+            req =
+                OAuth.AuthorizationCode.authenticateWithOpts adjustRequest <|
+                    {{- [ ... ] -}}
+        in
+        Http.send handleResponse req
+
+-}
+lenientResponseDecoder : Json.Decoder ResponseToken
+lenientResponseDecoder =
+    Json.map5 makeResponseToken
+        accessTokenDecoder
+        expiresInDecoder
+        refreshTokenDecoder
+        lenientScopeDecoder
         stateDecoder
 
 

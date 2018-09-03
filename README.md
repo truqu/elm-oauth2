@@ -147,16 +147,6 @@ to craft a custom transformation function for the `authenticateWithOpts` functio
 Here's a small example of how to work around GitHub's API v3 implementation:
 
 ```elm
-lenientResponseDecoder : Json.Decoder ResponseToken
-lenientResponseDecoder =
-    Json.map5 OAuth.Decode.makeResponseToken
-        OAuth.Decode.accessTokenDecoder
-        OAuth.Decode.expiresInDecoder
-        OAuth.Decode.refreshTokenDecoder
-        OAuth.Decode.lenientScopeDecoder
-        OAuth.Decode.stateDecoder
-
-
 adjustRequest : AdjustRequest ResponseToken
 adjustRequest req =
     let
