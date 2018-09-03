@@ -1,10 +1,14 @@
-# Created by https://www.gitignore.io/api/elm
-
-### Elm ###
-# elm-package generated files
+### elm ###
 elm-stuff
-# elm-repl generated files
 repl-temp-*
-index.html
 
-# End of https://www.gitignore.io/api/elm
+
+### tmux ###
+*.log
+
+
+### others / builds ###
+*.min.js
+*.html
+!examples/**/index.html
+examples/index.html
