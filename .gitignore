@@ -5,5 +5,6 @@
 elm-stuff
 # elm-repl generated files
 repl-temp-*
+index.html
 
 # End of https://www.gitignore.io/api/elm
