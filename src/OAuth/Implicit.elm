@@ -1,8 +1,4 @@
-module OAuth.Implicit
-    exposing
-        ( authorize
-        , parse
-        )
+module OAuth.Implicit exposing (authorize, parse)
 
 {-| The implicit grant type is used to obtain access tokens (it does not
 support the issuance of refresh tokens) and is optimized for public clients known to operate a
@@ -24,10 +20,13 @@ request.
 
 -}
 
-import OAuth exposing (..)
-import Navigation as Navigation
+import Browser.Navigation as Navigation
 import Internal as Internal
-import QueryString as QS
+import OAuth exposing (..)
+import Url exposing (Protocol(..), Url)
+import Url.Builder as Url
+import Url.Parser as Url exposing ((<?>))
+import Url.Parser.Query as Query
 
 
 {-| Redirects the resource owner (user) to the resource provider server using the specified
@@ -47,33 +46,37 @@ redirecting the resource owner (user).
 Fails with `ParseErr Empty` when there's nothing
 
 -}
-parse : Navigation.Location -> Result ParseErr ResponseToken
-parse { hash } =
+parse : Url -> Result ParseErr ResponseToken
+parse url_ =
     let
-        qs =
-            QS.parse ("?" ++ String.dropLeft 1 hash)
+        url =
+            { url_ | path = "/", query = url_.fragment, fragment = Nothing }
 
-        gets =
-            flip (QS.one QS.string) qs
+        tokenTypeParser =
+            Url.top
+                <?> Query.map2 Tuple.pair (Query.string "access_token") (Query.string "error")
 
-        geti =
-            flip (QS.one QS.int) qs
+        tokenParser accessToken =
+            Url.query <|
+                Query.map4 (Internal.parseToken accessToken)
+                    (Query.string "token_type")
+                    (Query.int "expires_in")
+                    (Internal.qsSpaceSeparatedList "scope")
+                    (Query.string "state")
+
+        errorParser error =
+            Url.query <|
+                Query.map3 (Internal.parseError error)
+                    (Query.string "error_description")
+                    (Query.string "error_url")
+                    (Query.string "state")
     in
-        case ( gets "access_token", gets "error" ) of
-            ( Just accessToken, _ ) ->
-                Internal.parseToken
-                    accessToken
-                    (gets "token_type")
-                    (geti "expires_in")
-                    (QS.all "scope" qs)
-                    (gets "state")
+    case Url.parse tokenTypeParser url of
+        Just ( Just accessToken, _ ) ->
+            Maybe.withDefault (Result.Err FailedToParse) <| Url.parse (tokenParser accessToken) url
 
-            ( _, Just error ) ->
-                Internal.parseError
-                    error
-                    (gets "error_description")
-                    (gets "error_uri")
-                    (gets "state")
+        Just ( _, Just error ) ->
+            Maybe.withDefault (Result.Err FailedToParse) <| Url.parse (errorParser error) url
 
-            _ ->
-                Result.Err Empty
+        _ ->
+            Result.Err Empty

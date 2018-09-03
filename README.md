@@ -46,164 +46,81 @@ import OAuth.Implicit
 ##### Authorizing & Authenticating
 
 ```elm
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        NoOp ->
-            model ! []
+type alias Model =
+    { oauth :
+        { clientId : String
+        , redirectUri : Url
+        }
+    -- [ ... ]
+    }
 
-        Authorize ->
-            model
-                ! [ OAuth.Implicit.authorize
-                        { clientId = "clientId"
-                        , redirectUri = "redirectUri"
-                        , responseType = OAuth.Token -- Use the OAuth.Token response type
-                        , scope = [ "whatever" ]
-                        , state = Nothing
-                        , url = "authorizationEndpoint"
-                        }
-                  ]
+
+type Msg 
+    = ClientIdSubmitted
+    -- [ ... ]
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg ({ oauth } as model) =
+    case msg of
+        ClientIdSubmitted ->
+            ( model
+            , OAuth.Implicit.authorize
+                { clientId = model.oauth.clientId
+                , redirectUri = model.oauth.redirectUri
+                , responseType = OAuth.Token
+                , scope = [ "email", "profile" ]
+                , state = Nothing
+                , url = authorizationEndpoint
+                }
+            )
+
+        -- [ ... ]
 ```
 
 ##### Parsing the token 
 
 ```elm
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
+init : () -> Url -> Key -> ( Model, Cmd Msg )
+init _ origin navKey =
     let
-        model = {}
+        model =
+            { oauth = { clientId = "", redirectUri = origin }
+            , error = Nothing
+            , token = Nothing
+            , profile = Nothing
+            }
     in
-        case OAuth.Implicit.parse location of
-            -- A token has been parsed 
-            Ok { token } ->
-                { model | token = Just token } ! [] 
+    case OAuth.Implicit.parse origin of
+        Ok { token } ->
+            ( { model | token = Just token }
+            , getUserProfile profileEndpoint token
+            )
 
-            -- Nothing to parse, unauthenticated
-            Err OAuth.Empty ->
-                model ! []
-
-            -- An other type of error (invalid parsing or an actual OAuth error) 
-            Err _ ->
-                model ! []
+        Err err ->
+            ( { model | error = showParseErr err }
+            , Cmd.none
+            )
 ```
 
 
 ##### Using the token
 
 ```elm
-let
-    req =
+getUserProfile : Url -> OAuth.Token -> Cmd Msg
+getUserProfile endpoint token =
+    Http.send GotUserInfo <|
         Http.request
             { method = "GET"
             , body = Http.emptyBody
-            , headers = OAuth.use token [] -- Add the token to the http headers
+            , headers = OAuth.use token []
             , withCredentials = False
-            , url = "whatever"
-            , expect = Http.expectJson decoder
+            , url = Url.toString endpoint
+            , expect = Http.expectJson profileDecoder
             , timeout = Nothing
             }
-in
-    { model | token = Just token } ! [ Http.send handleResponse req ]
 ```
 
-
-### Usage (Authorization Code Flow)
-
-A complete example is available
-[here](https://truqu.github.io/elm-oauth2/examples/authorization_code)
-(with the corresponding sources [here](https://github.com/truqu/elm-oauth2/tree/master/examples/authorization_code))
-
-
-##### Imports
-```elm
-import OAuth
-import OAuth.AuthorizationCode
-```
-
-##### Authorizing & Authenticating
-
-```elm
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        NoOp ->
-            model ! []
-
-        Authorize ->
-            model
-                ! [ OAuth.AuthorizationCode.authorize
-                        { clientId = "clientId"
-                        , redirectUri = "redirectUri"
-                        , responseType = OAuth.Code -- Use the OAuth.Code response type
-                        , scope = [ "whatever" ]
-                        , state = Nothing
-                        , url = "authorizationEndpoint"
-                        }
-                  ]
-
-        Authenticate res ->
-            case res of
-                -- Http request didn't go through
-                Err err ->
-                  model ! []
-
-                -- Token received from the server
-                Ok { token } ->
-
-```
-
-##### Parsing the token
-
-```elm
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
-    let
-        model = {}
-    in
-        case OAuth.AuthorizationCode.parse location of
-            -- A token has been parsed 
-            Ok { code } ->
-                let 
-                    req =
-                        OAuth.AuthorizationCode.authenticate <|
-                            OAuth.AuthorizationCode
-                                { credentials = { clientId = "clientId", secret = "secret" }
-                                , code = code
-                                , redirectUri = "redirectUri"
-                                , scope = [ "whatever" ]
-                                , state = Nothing
-                                , url = "tokenEndpoint"
-                                }
-                in
-                    model [ Http.send Authenticate req ]
-
-            -- Nothing to parse, unauthenticated
-            Err OAuth.Empty ->
-                model ! []
-
-            -- An other type of error (invalid parsing or an actual OAuth error) 
-            Err _ ->
-                model ! []
-```
-
-
-##### Using the token
-
-```elm
-let
-    req =
-        Http.request
-            { method = "GET"
-            , body = Http.emptyBody
-            , headers = OAuth.use token [] -- Add the token to the http headers
-            , withCredentials = False
-            , url = "whatever"
-            , expect = Http.expectJson decoder
-            , timeout = Nothing
-            }
-in
-    { model | token = Just token } ! [ Http.send handleResponse req ]
-```
 
 ### TroubleShooting
 
@@ -230,16 +147,6 @@ to craft a custom transformation function for the `authenticateWithOpts` functio
 Here's a small example of how to work around GitHub's API v3 implementation:
 
 ```elm
-lenientResponseDecoder : Json.Decoder ResponseToken
-lenientResponseDecoder =
-    Json.map5 OAuth.Decode.makeResponseToken
-        OAuth.Decode.accessTokenDecoder
-        OAuth.Decode.expiresInDecoder
-        OAuth.Decode.refreshTokenDecoder
-        OAuth.Decode.lenientScopeDecoder
-        OAuth.Decode.stateDecoder
-
-
 adjustRequest : AdjustRequest ResponseToken
 adjustRequest req =
     let
@@ -272,4 +179,3 @@ getToken code =
 ## Changelog
 
 [CHANGELOG.md](./CHANGELOG.md)
-

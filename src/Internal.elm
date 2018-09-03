@@ -1,26 +1,47 @@
-module Internal exposing (..)
+module Internal exposing
+    ( authHeader
+    , authenticate
+    , authorize
+    , makeRequest
+    , parseAuthorizationCode
+    , parseError
+    , parseToken
+    , qsSpaceSeparatedList
+    , urlAddList
+    , urlAddMaybe
+    )
 
+import Base64
+import Browser.Navigation as Navigation
+import Http as Http
 import OAuth exposing (..)
 import OAuth.Decode exposing (..)
-import Http as Http
-import QueryString as QS
-import Navigation as Navigation
-import Base64
+import Url exposing (Protocol(..), Url)
+import Url.Builder as Url exposing (QueryParameter)
+import Url.Parser.Query as Query
 
 
 authorize : Authorization -> Cmd msg
 authorize { clientId, url, redirectUri, responseType, scope, state } =
     let
         qs =
-            QS.empty
-                |> QS.add "client_id" clientId
-                |> QS.add "redirect_uri" redirectUri
-                |> QS.add "response_type" (showResponseType responseType)
-                |> qsAddList "scope" scope
-                |> qsAddMaybe "state" state
-                |> QS.render
+            [ Url.string "client_id" clientId
+            , Url.string "redirect_uri" (fmtRedirectUri redirectUri)
+            , Url.string "response_type" (showResponseType responseType)
+            ]
+                |> urlAddList "scope" scope
+                |> urlAddMaybe "state" state
+                |> Url.toQuery
+
+        targetUrl =
+            case url.query of
+                Nothing ->
+                    String.dropRight 1 (Url.toString url) ++ qs
+
+                Just _ ->
+                    String.dropRight 1 (Url.toString url) ++ "&" ++ String.dropLeft 1 qs
     in
-        Navigation.load (url ++ qs)
+    Navigation.load targetUrl
 
 
 authenticate : AdjustRequest ResponseToken -> Authentication -> Http.Request ResponseToken
@@ -29,56 +50,56 @@ authenticate adjust authentication =
         AuthorizationCode { credentials, code, redirectUri, scope, state, url } ->
             let
                 body =
-                    QS.empty
-                        |> QS.add "grant_type" "authorization_code"
-                        |> QS.add "client_id" credentials.clientId
-                        |> QS.add "redirect_uri" redirectUri
-                        |> QS.add "code" code
-                        |> qsAddList "scope" scope
-                        |> qsAddMaybe "state" state
-                        |> QS.render
+                    [ Url.string "grant_type" "authorization_code"
+                    , Url.string "client_id" credentials.clientId
+                    , Url.string "redirect_uri" (fmtRedirectUri redirectUri)
+                    , Url.string "code" code
+                    ]
+                        |> urlAddList "scope" scope
+                        |> urlAddMaybe "state" state
+                        |> Url.toQuery
                         |> String.dropLeft 1
 
                 headers =
                     authHeader <|
                         if String.isEmpty credentials.secret then
                             Nothing
+
                         else
                             Just credentials
             in
-                makeRequest adjust url headers body
+            makeRequest adjust url headers body
 
         ClientCredentials { credentials, scope, state, url } ->
             let
                 body =
-                    QS.empty
-                        |> QS.add "grant_type" "client_credentials"
-                        |> qsAddList "scope" scope
-                        |> qsAddMaybe "state" state
-                        |> QS.render
+                    [ Url.string "grant_type" "client_credentials" ]
+                        |> urlAddList "scope" scope
+                        |> urlAddMaybe "state" state
+                        |> Url.toQuery
                         |> String.dropLeft 1
 
                 headers =
                     authHeader (Just { clientId = credentials.clientId, secret = credentials.secret })
             in
-                makeRequest adjust url headers body
+            makeRequest adjust url headers body
 
         Password { credentials, password, scope, state, url, username } ->
             let
                 body =
-                    QS.empty
-                        |> QS.add "grant_type" "password"
-                        |> QS.add "username" username
-                        |> QS.add "password" password
-                        |> qsAddList "scope" scope
-                        |> qsAddMaybe "state" state
-                        |> QS.render
+                    [ Url.string "grant_type" "password"
+                    , Url.string "username" username
+                    , Url.string "password" password
+                    ]
+                        |> urlAddList "scope" scope
+                        |> urlAddMaybe "state" state
+                        |> Url.toQuery
                         |> String.dropLeft 1
 
                 headers =
                     authHeader credentials
             in
-                makeRequest adjust url headers body
+            makeRequest adjust url headers body
 
         Refresh { credentials, scope, token, url } ->
             let
@@ -88,35 +109,35 @@ authenticate adjust authentication =
                             t
 
                 body =
-                    QS.empty
-                        |> QS.add "grant_type" "refresh_token"
-                        |> QS.add "refresh_token" refreshToken
-                        |> qsAddList "scope" scope
-                        |> QS.render
+                    [ Url.string "grant_type" "refresh_token"
+                    , Url.string "refresh_token" refreshToken
+                    ]
+                        |> urlAddList "scope" scope
+                        |> Url.toQuery
                         |> String.dropLeft 1
 
                 headers =
                     authHeader credentials
             in
-                makeRequest adjust url headers body
+            makeRequest adjust url headers body
 
 
-makeRequest : AdjustRequest ResponseToken -> String -> List Http.Header -> String -> Http.Request ResponseToken
+makeRequest : AdjustRequest ResponseToken -> Url -> List Http.Header -> String -> Http.Request ResponseToken
 makeRequest adjust url headers body =
     let
         requestParts =
             { method = "POST"
             , headers = headers
-            , url = url
+            , url = Url.toString url
             , body = Http.stringBody "application/x-www-form-urlencoded" body
             , expect = Http.expectJson responseDecoder
             , timeout = Nothing
             , withCredentials = False
             }
     in
-        requestParts
-            |> adjust
-            |> Http.request
+    requestParts
+        |> adjust
+        |> Http.request
 
 
 authHeader : Maybe Credentials -> List Http.Header
@@ -140,8 +161,8 @@ parseError error errorDescription errorUri state =
 
 parseToken : String -> Maybe String -> Maybe Int -> List String -> Maybe String -> Result ParseErr ResponseToken
 parseToken accessToken mTokenType mExpiresIn scope state =
-    case ( Maybe.map String.toLower mTokenType, mExpiresIn ) of
-        ( Just "bearer", mExpiresIn ) ->
+    case Maybe.map String.toLower mTokenType of
+        Just "bearer" ->
             Ok <|
                 { expiresIn = mExpiresIn
                 , refreshToken = Nothing
@@ -150,10 +171,10 @@ parseToken accessToken mTokenType mExpiresIn scope state =
                 , token = Bearer accessToken
                 }
 
-        ( Just _, _ ) ->
+        Just _ ->
             Result.Err <| Invalid [ "token_type" ]
 
-        ( Nothing, _ ) ->
+        Nothing ->
             Result.Err <| Missing [ "token_type" ]
 
 
@@ -165,21 +186,52 @@ parseAuthorizationCode code state =
         }
 
 
-qsAddList : String -> List String -> QS.QueryString -> QS.QueryString
-qsAddList param xs qs =
-    case xs of
-        [] ->
-            qs
+urlAddList : String -> List String -> List QueryParameter -> List QueryParameter
+urlAddList param xs qs =
+    qs
+        ++ (case xs of
+                [] ->
+                    []
 
-        _ ->
-            QS.add param (String.join " " xs) qs
+                _ ->
+                    [ Url.string param (String.join " " xs) ]
+           )
 
 
-qsAddMaybe : String -> Maybe String -> QS.QueryString -> QS.QueryString
-qsAddMaybe param ms qs =
-    case ms of
-        Nothing ->
-            qs
+urlAddMaybe : String -> Maybe String -> List QueryParameter -> List QueryParameter
+urlAddMaybe param ms qs =
+    qs
+        ++ (case ms of
+                Nothing ->
+                    []
 
-        Just s ->
-            QS.add param s qs
+                Just s ->
+                    [ Url.string param s ]
+           )
+
+
+qsSpaceSeparatedList : String -> Query.Parser (List String)
+qsSpaceSeparatedList param =
+    Query.map (\s -> Maybe.withDefault "" s |> String.split " ") (Query.string param)
+
+
+showProtocol : Protocol -> String
+showProtocol protocol =
+    case protocol of
+        Http ->
+            "http"
+
+        Https ->
+            "https"
+
+
+fmtRedirectUri : Url -> String
+fmtRedirectUri url =
+    String.concat
+        [ showProtocol url.protocol
+        , "://"
+        , url.host
+        , Maybe.withDefault "" (Maybe.map (\i -> ":" ++ String.fromInt i) url.port_)
+        , url.path
+        , Maybe.withDefault "" (Maybe.map (\q -> "?" ++ q) url.query)
+        ]

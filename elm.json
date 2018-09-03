@@ -1,0 +1,26 @@
+{
+    "type": "package",
+    "name": "truqu/elm-oauth2",
+    "version": "1.0.0",
+    "license": "MIT",
+    "summary": "OAuth 2.0 client-side utils",
+    "exposed-modules": [
+        "OAuth",
+        "OAuth.AuthorizationCode",
+        "OAuth.Implicit",
+        "OAuth.ClientCredentials",
+        "OAuth.Password",
+        "OAuth.Decode"
+    ],
+    "dependencies": {
+        "elm/url": "1.0.0 <= v < 2.0.0",
+        "elm/core": "1.0.0 <= v < 2.0.0",
+        "elm/html": "1.0.0 <= v < 2.0.0",
+        "elm/http": "1.0.0 <= v < 2.0.0",
+        "elm/browser": "1.0.0 <= v < 2.0.0",
+        "elm/json": "1.0.0 <= v < 2.0.0",
+        "truqu/elm-base64": "2.0.0 <= v < 3.0.0"
+    },
+    "test-dependencies": {},
+    "elm-version": "0.19.0 <= v < 0.20.0"
+}

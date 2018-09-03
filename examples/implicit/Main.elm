@@ -1,38 +1,37 @@
-module Main exposing (..)
+module Main exposing (main)
 
+import Browser exposing (Document, application)
+import Browser.Navigation as Navigation exposing (Key)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as Json
-import Navigation
 import OAuth
 import OAuth.Implicit
+import Url exposing (Protocol(..), Url)
 
 
----------------------------------------
--- Endpoints to interact with Google OAuth
-
-
-authorizationEndpoint : String
-authorizationEndpoint =
-    "https://accounts.google.com/o/oauth2/v2/auth"
-
-
-profileEndpoint : String
-profileEndpoint =
-    "https://www.googleapis.com/oauth2/v1/userinfo"
+main : Program () Model Msg
+main =
+    application
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = always Sub.none
+        , onUrlRequest = always NoOp
+        , onUrlChange = always NoOp
+        }
 
 
 
----------------------------------------
--- Basic Application Model
+-- Model
 
 
 type alias Model =
     { oauth :
         { clientId : String
-        , redirectUri : String
+        , redirectUri : Url
         }
     , error : Maybe String
     , token : Maybe OAuth.Token
@@ -56,246 +55,269 @@ profileDecoder =
 
 
 
----------------------------------------
--- Messages for the app
---
--- Authorize -> Trigger an OAuth authorization call. The authentication is done implicitly
+-- Msg
 
 
-type Msg
-    = Nop
-    | Authorize
-    | UpdateClientId String
-    | GetProfile (Result Http.Error Profile)
-
-
-main : Program Never Model Msg
-main =
-    Navigation.program
-        (always Nop)
-        { init = init
-        , update = update
-        , view = view
-        , subscriptions = (\_ -> Sub.none)
-        }
+type
+    Msg
+    -- No Operation, terminal case
+    = NoOp
+      -- The 'clientId' input has changed
+    | ClientIdChanged String
+      -- The 'clientId' input has been submitted
+    | ClientIdSubmitted
+      -- Got a response from the googleapis user info
+    | GotUserInfo (Result Http.Error Profile)
 
 
 
----------------------------------------
--- On init, we parse the location to find any trace of an OAuth redirection. We are looking
--- for an `authorization_code` here.
---
--- Also, since the `clientId` and `secret` aren't stored in the code to make this demo
--- interactive, we've also passed them along in the state (which is returned, untouched,
--- by the resource provider). In practice, you don't want to do this.
+-- init
 
 
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
+init : () -> Url -> Key -> ( Model, Cmd Msg )
+init _ origin navKey =
     let
         model =
-            { oauth =
-                { clientId = ""
-                , redirectUri = location.origin ++ location.pathname
-                }
+            { oauth = { clientId = "", redirectUri = origin }
             , error = Nothing
             , token = Nothing
             , profile = Nothing
             }
     in
-        case OAuth.Implicit.parse location of
-            Ok { token } ->
-                let
-                    req =
-                        Http.request
-                            { method = "GET"
-                            , body = Http.emptyBody
-                            , headers = OAuth.use token []
-                            , withCredentials = False
-                            , url = profileEndpoint
-                            , expect = Http.expectJson profileDecoder
-                            , timeout = Nothing
-                            }
-                in
-                    { model | token = Just token }
-                        ! [ Navigation.modifyUrl model.oauth.redirectUri
-                          , Http.send GetProfile req
-                          ]
+    case OAuth.Implicit.parse origin of
+        Ok { token } ->
+            ( { model | token = Just token }
+            , getUserProfile profileEndpoint token
+            )
 
-            Err OAuth.Empty ->
-                model ! []
-
-            Err (OAuth.OAuthErr err) ->
-                { model | error = Just <| OAuth.showErrCode err.error }
-                    ! [ Navigation.modifyUrl model.oauth.redirectUri ]
-
-            Err _ ->
-                { model | error = Just "parsing error" } ! []
+        Err err ->
+            ( { model | error = showParseErr err }
+            , Cmd.none
+            )
 
 
+getUserProfile : Url -> OAuth.Token -> Cmd Msg
+getUserProfile endpoint token =
+    Http.send GotUserInfo <|
+        Http.request
+            { method = "GET"
+            , body = Http.emptyBody
+            , headers = OAuth.use token []
+            , withCredentials = False
+            , url = Url.toString endpoint
+            , expect = Http.expectJson profileDecoder
+            , timeout = Nothing
+            }
 
----------------------------------------
--- Update is pretty straightforward.
+
+showParseErr : OAuth.ParseErr -> Maybe String
+showParseErr oauthErr =
+    case oauthErr of
+        OAuth.Empty ->
+            Nothing
+
+        OAuth.OAuthErr err ->
+            Just <| OAuth.showErrCode err.error
+
+        OAuth.FailedToParse ->
+            Just "Failed to parse the origin URL"
+
+        OAuth.Missing params ->
+            Just <| "Missing expected parameter(s) from the response: " ++ String.join ", " params
+
+        OAuth.Invalid params ->
+            Just <| "Invalid parameter(s) from the response: " ++ String.join ", " params
+
+
+
+-- update
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ oauth } as model) =
     case msg of
-        Nop ->
-            model ! []
+        NoOp ->
+            ( model, Cmd.none )
 
-        UpdateClientId clientId ->
+        ClientIdChanged clientId ->
             let
-                oauth_ =
+                oauthBis =
                     { oauth | clientId = clientId }
             in
-                { model | oauth = oauth_ } ! []
+            ( { model | oauth = oauthBis }
+            , Cmd.none
+            )
 
-        GetProfile res ->
+        ClientIdSubmitted ->
+            ( model
+            , OAuth.Implicit.authorize
+                { clientId = model.oauth.clientId
+                , redirectUri = model.oauth.redirectUri
+                , responseType = OAuth.Token
+                , scope = [ "email", "profile" ]
+                , state = Nothing
+                , url = authorizationEndpoint
+                }
+            )
+
+        GotUserInfo res ->
             case res of
                 Err err ->
-                    { model | error = Just "unable to fetch user profile ¯\\_(ツ)_/¯" } ! []
+                    ( { model | error = Just "Unable to fetch user profile ¯\\_(ツ)_/¯" }
+                    , Cmd.none
+                    )
 
                 Ok profile ->
-                    { model | profile = Just profile } ! []
-
-        Authorize ->
-            model
-                ! [ OAuth.Implicit.authorize
-                        { clientId = model.oauth.clientId
-                        , redirectUri = model.oauth.redirectUri
-                        , responseType = OAuth.Token
-                        , scope = [ "email", "profile" ]
-                        , state = Nothing
-                        , url = authorizationEndpoint
-                        }
-                  ]
+                    ( { model | profile = Just profile }
+                    , Cmd.none
+                    )
 
 
 
----------------------------------------
--- The View. Sorry for this. Nothing interesting here.
+-- view
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
     let
-        isNothing maybe =
-            case maybe of
-                Nothing ->
-                    True
-
-                _ ->
-                    False
-
         content =
             case ( model.token, model.profile ) of
                 ( Nothing, Nothing ) ->
-                    Html.form
-                        [ onSubmit Authorize
-                        , style
-                            [ ( "flex-direction", "column" )
-                            ]
-                        ]
-                        [ input
-                            [ onInput UpdateClientId
-                            , type_ "text"
-                            , placeholder "clientId"
-                            , value model.oauth.clientId
-                            , style
-                                [ ( "border", "none" )
-                                , ( "border-bottom", "1px solid #757575" )
-                                , ( "color", "#757575" )
-                                , ( "font", "1.5em" )
-                                , ( "font", "Roboto, Arial" )
-                                , ( "outline", "none" )
-                                , ( "padding", "0.5em 1em" )
-                                , ( "text-align", "center" )
-                                ]
-                            ]
-                            []
-                        , button
-                            [ style
-                                [ ( "background", "url('/elm-oauth2/examples/images/google.png') 1em center no-repeat" )
-                                , ( "background-size", "2em" )
-                                , ( "border", "none" )
-                                , ( "box-shadow", "rgba(0,0,0,0.25) 0px 2px 4px 0px" )
-                                , ( "color", "#757575" )
-                                , ( "font", "Roboto, Arial" )
-                                , ( "margin", "1em" )
-                                , ( "outline", "none" )
-                                , ( "padding", "1em 1em 1em 3em" )
-                                , ( "text-align", "right" )
-                                ]
-                            , onClick Authorize
-                            ]
-                            [ text "Sign in" ]
-                        ]
+                    viewForm model.oauth.clientId
 
                 ( Just token, Nothing ) ->
-                    div
-                        [ style
-                            [ ( "color", "#757575" )
-                            , ( "font", "Roboto, Arial" )
-                            , ( "text-align", "center" )
-                            ]
-                        ]
-                        [ text "fetching profile..." ]
+                    viewFetching
 
                 ( _, Just profile ) ->
-                    div
-                        [ style
-                            [ ( "display", "flex" )
-                            , ( "flex-direction", "column" )
-                            , ( "align-items", "center" )
-                            ]
-                        ]
-                        [ img
-                            [ src profile.picture
-                            , style
-                                [ ( "height", "150px" )
-                                , ( "margin", "1em" )
-                                , ( "width", "150px" )
-                                ]
-                            ]
-                            []
-                        , text <| profile.name ++ " <" ++ profile.email ++ ">"
-                        ]
+                    viewProfile profile
     in
-        div
-            [ style
-                [ ( "display", "flex" )
-                , ( "flex-direction", "column" )
-                , ( "align-items", "center" )
-                , ( "padding", "3em" )
-                ]
+    { title = "Elm OAuth2 Example - Implicit Flow"
+    , body = [ viewBody content model.error ]
+    }
+
+
+viewBody : Html Msg -> Maybe String -> Html Msg
+viewBody content error =
+    div
+        [ style "display" "flex"
+        , style "flex-direction" "column"
+        , style "align-items" "center"
+        , style "padding" "3em"
+        ]
+        [ h2
+            [ style "display" "flex"
+            , style "font-family" "Roboto, Arial, sans-serif"
+            , style "color" "#141414"
             ]
-            [ h2
-                [ style
-                    [ ( "display", "flex" )
-                    , ( "font-family", "Roboto, Arial, sans-serif" )
-                    , ( "color", "#141414" )
+            [ text "OAuth 2.0 Implicit Flow Example" ]
+        , case error of
+            Nothing ->
+                div [ style "display" "none" ] []
+
+            Just msg ->
+                div
+                    [ style "display" "block"
+                    , style "width" "100%"
+                    , style "position" "absolute"
+                    , style "top" "0"
+                    , style "padding" "1em"
+                    , style "font-family" "Roboto Arial sans-serif"
+                    , style "text-align" "center"
+                    , style "background" "#e74c3c"
+                    , style "color" "#ffffff"
                     ]
-                ]
-                [ text "OAuth 2.0 Implicit Flow Example" ]
-            , div
-                [ style
-                    [ ( "display"
-                      , if isNothing model.error then
-                            "none"
-                        else
-                            "block"
-                      )
-                    , ( "width", "100%" )
-                    , ( "position", "absolute" )
-                    , ( "top", "0" )
-                    , ( "padding", "1em" )
-                    , ( "font-family", "Roboto, Arial, sans-serif" )
-                    , ( "text-align", "center" )
-                    , ( "background", "#e74c3c" )
-                    , ( "color", "#ffffff" )
-                    ]
-                ]
-                [ text <| Maybe.withDefault "" model.error ]
-            , content
+                    [ text msg ]
+        , content
+        ]
+
+
+viewForm : String -> Html Msg
+viewForm clientId =
+    Html.form
+        [ onSubmit ClientIdSubmitted
+        , style "flex-direction" "column"
+        ]
+        [ input
+            [ onInput ClientIdChanged
+            , type_ "text"
+            , placeholder "clientId"
+            , value clientId
+            , style "border" "none"
+            , style "border-bottom" "1px solid #757575"
+            , style "color" "#757575"
+            , style "font" "1.5em"
+            , style "font" "Roboto Arial"
+            , style "outline" "none"
+            , style "padding" "0.5em 1em"
+            , style "text-align" "center"
             ]
+            []
+        , button
+            [ style "background" "url('/elm-oauth2/examples/images/google.png') 1em center no-repeat"
+            , style "background-size" "2em"
+            , style "border" "none"
+            , style "box-shadow" "rgba(0,0,0,0.25) 0px 2px 4px 0px"
+            , style "color" "#757575"
+            , style "font" "Roboto Arial"
+            , style "margin" "1em"
+            , style "outline" "none"
+            , style "padding" "1em 1em 1em 3em"
+            , style "text-align" "right"
+            , onClick ClientIdSubmitted
+            ]
+            [ text "Sign in" ]
+        ]
+
+
+viewFetching : Html Msg
+viewFetching =
+    div
+        [ style "color" "#757575"
+        , style "font" "Roboto Arial"
+        , style "text-align" "center"
+        ]
+        [ text "fetching profile..." ]
+
+
+viewProfile : Profile -> Html Msg
+viewProfile profile =
+    div
+        [ style "display" "flex"
+        , style "flex-direction" "column"
+        , style "align-items" "center"
+        ]
+        [ img
+            [ src profile.picture
+            , style "height" "150px"
+            , style "margin" "1em"
+            , style "width" "150px"
+            ]
+            []
+        , text <| profile.name ++ " <" ++ profile.email ++ ">"
+        ]
+
+
+
+-- Constants / Google APIs endpoints
+
+
+authorizationEndpoint : Url
+authorizationEndpoint =
+    { protocol = Https
+    , host = "accounts.google.com"
+    , path = "/o/oauth2/v2/auth/"
+    , port_ = Nothing
+    , query = Nothing
+    , fragment = Nothing
+    }
+
+
+profileEndpoint : Url
+profileEndpoint =
+    { protocol = Https
+    , host = "www.googleapis.com"
+    , path = "/oauth2/v1/userinfo/"
+    , port_ = Nothing
+    , query = Nothing
+    , fragment = Nothing
+    }
