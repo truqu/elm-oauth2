@@ -18,7 +18,7 @@ done
 rm -f index.html
 
 ## Get version number
-version=$(cat elm-package.json | grep '"version"' | sed 's/\([^0-9]*\)\([0-9]\.[0-9]\.[0-9]\)\(.*\)/\2/')
+version=$(cat elm.json | grep '"version"' | sed 's/\([^0-9]*\)\([0-9]\.[0-9]\.[0-9]\)\(.*\)/\2/')
 if [ -z "$version" ]; then
   echo "unable to capture package version"
   exit 1
@@ -27,8 +27,9 @@ else
 fi
 
 ## Create tag and publish
-git tag -a $version -m "release version $version" && git push origin HEAD --tags
-elm package publish || exit 1
+git tag -d $version
+git tag -a $version -m "release version $version" && git push origin $version
+elm publish || exit 1
 
 ## Deploy examples
 git checkout "gh-pages" || exit 1
