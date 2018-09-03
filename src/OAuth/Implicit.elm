@@ -1,4 +1,4 @@
-module OAuth.Implicit exposing (authorize, parse)
+module OAuth.Implicit exposing (Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, makeAuthUrl, parseToken)
 
 {-| The implicit grant type is used to obtain access tokens (it does not
 support the issuance of refresh tokens) and is optimized for public clients known to operate a
@@ -16,67 +16,109 @@ request.
 
 ## Authorize
 
-@docs authorize, parse
+@docs Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError, makeAuthUrl, parseToken
 
 -}
 
-import Browser.Navigation as Navigation
-import Internal as Internal
-import OAuth exposing (..)
+import Internal exposing (..)
+import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
 import Url exposing (Protocol(..), Url)
-import Url.Builder as Url
 import Url.Parser as Url exposing ((<?>))
 import Url.Parser.Query as Query
 
 
-{-| Redirects the resource owner (user) to the resource provider server using the specified
-authorization flow.
 
-In this case, use `Token` as a `responseType`
+--
+-- Authorize
+--
+
+
+type alias Authorization =
+    Internal.Authorization
+
+
+type alias AuthorizationError =
+    Internal.AuthorizationError ErrorCode
+
+
+{-| The response obtained as a result of an authentication (implicit or not)
+
+  - token (_REQUIRED_):
+    The access token issued by the authorization server.
+
+  - refreshToken (_OPTIONAL_):
+    The refresh token, which can be used to obtain new access tokens using the same authorization
+    grant as described in [Section 6](https://tools.ietf.org/html/rfc6749#section-6).
+
+  - expiresIn (_RECOMMENDED_):
+    The lifetime in seconds of the access token. For example, the value "3600" denotes that the
+    access token will expire in one hour from the time the response was generated. If omitted, the
+    authorization server SHOULD provide the expiration time via other means or document the default
+    value.
+
+  - scope (_OPTIONAL, if identical to the scope requested; otherwise, REQUIRED_):
+    The scope of the access token as described by [Section 3.3](https://tools.ietf.org/html/rfc6749#section-3.3).
+
+  - state (_REQUIRED if `state` was present in the authorization request_):
+    The exact value received from the client
 
 -}
-authorize : Authorization -> Cmd msg
-authorize =
-    Internal.authorize
+type alias AuthorizationSuccess =
+    { token : Token
+    , refreshToken : Maybe Token
+    , expiresIn : Maybe Int
+    , scope : List String
+    , state : Maybe String
+    }
+
+
+{-| Describes errors coming from attempting to parse a url after an OAuth redirection
+
+  - Empty: means there were nothing (related to OAuth 2.0) to parse
+  - Error: a successfully parsed OAuth 2.0 error
+  - Success: a successfully parsed the response
+
+-}
+type AuthorizationResult
+    = Empty
+    | Error AuthorizationError
+    | Success AuthorizationSuccess
+
+
+{-| Redirects the resource owner (user) to the resource provider server using the specified
+authorization flow.
+-}
+makeAuthUrl : Authorization -> Url
+makeAuthUrl =
+    Internal.makeAuthUrl Internal.Token
 
 
 {-| Parse the location looking for a parameters set by the resource provider server after
 redirecting the resource owner (user).
 
-Fails with `ParseErr Empty` when there's nothing
+Fails with `ParseResult Empty` when there's nothing or an invalid Url is passed
 
 -}
-parse : Url -> Result ParseErr ResponseToken
-parse url_ =
+parseToken : Url -> AuthorizationResult
+parseToken url_ =
     let
         url =
             { url_ | path = "/", query = url_.fragment, fragment = Nothing }
-
-        tokenTypeParser =
-            Url.top
-                <?> Query.map2 Tuple.pair (Query.string "access_token") (Query.string "error")
-
-        tokenParser accessToken =
-            Url.query <|
-                Query.map4 (Internal.parseToken accessToken)
-                    (Query.string "token_type")
-                    (Query.int "expires_in")
-                    (Internal.qsSpaceSeparatedList "scope")
-                    (Query.string "state")
-
-        errorParser error =
-            Url.query <|
-                Query.map3 (Internal.parseError error)
-                    (Query.string "error_description")
-                    (Query.string "error_url")
-                    (Query.string "state")
     in
-    case Url.parse tokenTypeParser url of
-        Just ( Just accessToken, _ ) ->
-            Maybe.withDefault (Result.Err FailedToParse) <| Url.parse (tokenParser accessToken) url
+    case Url.parse (Url.top <?> Query.map2 Tuple.pair tokenParser (errorParser errorCodeFromString)) url of
+        Just ( Ok accessToken, _ ) ->
+            parseUrlQuery url Empty (Query.map Success <| authorizationSuccessParser accessToken)
 
         Just ( _, Just error ) ->
-            Maybe.withDefault (Result.Err FailedToParse) <| Url.parse (errorParser error) url
+            parseUrlQuery url Empty (Query.map Error <| authorizationErrorParser error)
 
         _ ->
-            Result.Err Empty
+            Empty
+
+
+authorizationSuccessParser : Token -> Query.Parser AuthorizationSuccess
+authorizationSuccessParser accessToken =
+    Query.map3 (AuthorizationSuccess accessToken Nothing)
+        expiresInParser
+        scopeParser
+        stateParser

@@ -1,8 +1,4 @@
-module OAuth.Password
-    exposing
-        ( authenticate
-        , authenticateWithOpts
-        )
+module OAuth.Password exposing (Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationErrorDecoder)
 
 {-| The resource owner password credentials grant type is suitable in
 cases where the resource owner has a trust relationship with the
@@ -21,32 +17,85 @@ request.
 
 ## Authenticate
 
-@docs authenticate, authenticateWithOpts
+@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationErrorDecoder
 
 -}
 
-import OAuth exposing (..)
-import OAuth.Decode exposing (..)
-import Internal as Internal
-import Http as Http
+import Internal as Internal exposing (..)
+import Json.Decode as Json
+import OAuth exposing (ErrorCode(..), errorCodeFromString)
+import Url exposing (Url)
+import Url.Builder as Builder
 
 
-{-| Authenticate the client using the authorization code obtained from the authorization.
+{-| Request configuration for a Password authentication
 
-In this case, use the `Password` constructor.
+    let authentication =
+          { credentials = Just
+              -- Optional, unless required by the resource provider
+              { clientId = "<my-client-id>"
+              , secret = "<my-client-secret>"
+              }
+          -- Resource owner's password
+          , password = "<user-password>"
+          -- Scopes requested, can be empty
+          , scope = ["read:whatever"]
+          -- Token endpoint of the resource provider
+          , url = "<token-endpoint>"
+          -- Resource owner's username
+          , username = "<user-username>"
+          }
 
 -}
-authenticate : Authentication -> Http.Request ResponseToken
-authenticate =
-    Internal.authenticate identity
+type alias Authentication =
+    { credentials : Maybe Credentials
+    , password : String
+    , scope : List String
+    , url : Url
+    , username : String
+    }
 
 
-{-| Authenticate the client using the authorization code obtained from the authorization, passing
-additional custom options. Use with care.
+type alias Credentials =
+    { clientId : String, secret : String }
 
-In this case, use the `Password` constructor.
+
+type alias AuthenticationSuccess =
+    Internal.AuthenticationSuccess
+
+
+type alias AuthenticationError =
+    Internal.AuthenticationError ErrorCode
+
+
+type alias RequestParts a =
+    Internal.RequestParts a
+
+
+authenticationErrorDecoder : Json.Decoder AuthenticationError
+authenticationErrorDecoder =
+    Internal.authenticationErrorDecoder (errorDecoder errorCodeFromString)
+
+
+{-| Builds a the request components required to get a token from the resource owner (user) credentials
+
+    let req : Http.Request TokenResponse
+        req = makeTokenRequest authentication |> Http.request
 
 -}
-authenticateWithOpts : AdjustRequest ResponseToken -> Authentication -> Http.Request ResponseToken
-authenticateWithOpts fn =
-    Internal.authenticate fn
+makeTokenRequest : Authentication -> RequestParts AuthenticationSuccess
+makeTokenRequest { credentials, password, scope, url, username } =
+    let
+        body =
+            [ Builder.string "grant_type" "password"
+            , Builder.string "username" username
+            , Builder.string "password" password
+            ]
+                |> urlAddList "scope" scope
+                |> Builder.toQuery
+                |> String.dropLeft 1
+
+        headers =
+            makeHeaders credentials
+    in
+    makeRequest url headers body

@@ -1,17 +1,15 @@
-module OAuth.ClientCredentials exposing (Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationErrorDecoder)
+module OAuth.Refresh exposing (Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationErrorDecoder)
 
-{-| The client can request an access token using only its client
-credentials (or other supported means of authentication) when the client is requesting access to
-the protected resources under its control, or those of another resource owner that have been
-previously arranged with the authorization server (the method of which is beyond the scope of
-this specification).
+{-| If the authorization server issued a refresh token to the client, the
+client may make a refresh request to the token endpoint to obtain a new access token
+(and refresh token) from the authorization server.
 
 There's only one step in this process:
 
-  - The client authenticates itself directly using credentials it owns.
+    - The client authenticates itself directly using the previously obtained refresh token
 
-After this step, the client owns an `access_token` that can be used to authorize any subsequent
-request.
+After this step, the client owns a fresh `access_token` and possibly, a new `refresh_token`. Both
+can be used in subsequent requests.
 
 
 ## Authenticate
@@ -22,24 +20,28 @@ request.
 
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), errorCodeFromString)
+import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 
 
-{-| Request configuration for a ClientCredentials authentication
+{-| Request configuration for a Refresh authentication
 
     let authentication =
-          { credentials =
-          -- Token endpoint of the resource provider
-          , url = "<token-endpoint>"
+          -- Optional, unless required by the resource provider
+          { credentials = Nothing
           -- Scopes requested, can be empty
           , scope = ["read:whatever"]
+          -- A refresh token previously delivered
+          , token = OAuth.Bearer "abcdef1234567890"
+          -- Token endpoint of the resource provider
+          , url = "<token-endpoint>"
           }
 
 -}
 type alias Authentication =
-    { credentials : Credentials
+    { credentials : Maybe Credentials
+    , token : Token
     , scope : List String
     , url : Url
     }
@@ -73,26 +75,24 @@ authenticationErrorDecoder =
     Internal.authenticationErrorDecoder (errorDecoder errorCodeFromString)
 
 
-{-| Builds a the request components required to get a token from client credentials
+{-| Builds a the request components required to refresh a token
 
     let req : Http.Request TokenResponse
-        req = makeTokenRequest authentication |> Http.request
+        req = makeTokenRequest reqParts |> Http.request
 
 -}
 makeTokenRequest : Authentication -> RequestParts AuthenticationSuccess
-makeTokenRequest { credentials, scope, url } =
+makeTokenRequest { credentials, scope, token, url } =
     let
         body =
-            [ Builder.string "grant_type" "client_credentials" ]
+            [ Builder.string "grant_type" "refresh_token"
+            , Builder.string "refresh_token" (extractTokenString token)
+            ]
                 |> urlAddList "scope" scope
                 |> Builder.toQuery
                 |> String.dropLeft 1
 
         headers =
-            makeHeaders <|
-                Just
-                    { clientId = credentials.clientId
-                    , secret = credentials.secret
-                    }
+            makeHeaders credentials
     in
     makeRequest url headers body

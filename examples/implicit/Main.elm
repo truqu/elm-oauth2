@@ -30,6 +30,7 @@ main =
 
 type alias Model =
     { redirectUri : Url
+    , state : String
     , error : Maybe String
     , token : Maybe OAuth.Token
     , profile : Maybe Profile
@@ -51,27 +52,6 @@ profileDecoder =
         (Json.field "picture" Json.string)
 
 
-preModel : Int -> Model -> String
-preModel n model =
-    preRecord n
-        "Model"
-        [ ( "redirectUri", preString 30 <| Url.toString model.redirectUri )
-        , ( "error", preMaybe (preString 30) model.error )
-        , ( "token", preMaybe (\s -> preString 30 <| OAuth.showToken s) model.token )
-        , ( "profile", preMaybe (preProfile (n + 1)) model.profile )
-        ]
-
-
-preProfile : Int -> Profile -> String
-preProfile n profile =
-    preRecord n
-        "Profile"
-        [ ( "email", preString 30 profile.email )
-        , ( "name", preString 30 profile.name )
-        , ( "picture", preString 30 profile.picture )
-        ]
-
-
 
 -- Msg
 
@@ -90,24 +70,33 @@ type
 -- init
 
 
+makeInitModel : Url -> Model
+makeInitModel origin =
+    { redirectUri = { origin | query = Nothing, fragment = Nothing }
+    , state = "CSRF" -- NOTE In theory, this state is securely generated before each request and stored somewhere.
+    , error = Nothing
+    , token = Nothing
+    , profile = Nothing
+    }
+
+
 init : () -> Url -> Key -> ( Model, Cmd Msg )
-init _ origin navKey =
+init _ origin _ =
     let
         model =
-            { redirectUri = origin
-            , error = Nothing
-            , token = Nothing
-            , profile = Nothing
-            }
+            makeInitModel origin
     in
-    case OAuth.Implicit.parse origin of
-        Ok { token } ->
+    case OAuth.Implicit.parseToken origin of
+        OAuth.Implicit.Success { token } ->
             ( { model | token = Just token }
             , getUserProfile profileEndpoint token
             )
 
-        Err err ->
-            ( { model | error = showParseErr err }
+        OAuth.Implicit.Empty ->
+            ( model, Cmd.none )
+
+        OAuth.Implicit.Error { error } ->
+            ( { model | error = Just <| OAuth.errorCodeToString error }
             , Cmd.none
             )
 
@@ -118,31 +107,12 @@ getUserProfile endpoint token =
         Http.request
             { method = "GET"
             , body = Http.emptyBody
-            , headers = OAuth.use token []
+            , headers = OAuth.useToken token []
             , withCredentials = False
             , url = Url.toString endpoint
             , expect = Http.expectJson profileDecoder
             , timeout = Nothing
             }
-
-
-showParseErr : OAuth.ParseErr -> Maybe String
-showParseErr oauthErr =
-    case oauthErr of
-        OAuth.Empty ->
-            Nothing
-
-        OAuth.OAuthErr err ->
-            Just <| OAuth.showErrCode err.error
-
-        OAuth.FailedToParse ->
-            Just "Failed to parse the origin URL"
-
-        OAuth.Missing params ->
-            Just <| "Missing expected parameter(s) from the response: " ++ String.join ", " params
-
-        OAuth.Invalid params ->
-            Just <| "Invalid parameter(s) from the response: " ++ String.join ", " params
 
 
 
@@ -156,15 +126,17 @@ update msg model =
             ( model, Cmd.none )
 
         SignInRequested ->
+            let
+                auth =
+                    { clientId = clientId
+                    , redirectUri = model.redirectUri
+                    , scope = [ "email", "profile" ]
+                    , state = Nothing
+                    , url = authorizationEndpoint
+                    }
+            in
             ( model
-            , OAuth.Implicit.authorize
-                { clientId = clientId
-                , redirectUri = model.redirectUri
-                , responseType = OAuth.Token
-                , scope = [ "email", "profile" ]
-                , state = Nothing
-                , url = authorizationEndpoint
-                }
+            , auth |> OAuth.Implicit.makeAuthUrl |> Url.toString |> Navigation.load
             )
 
         GotUserInfo res ->
@@ -230,25 +202,8 @@ viewBody model content =
                     , style "color" "#ffffff"
                     ]
                     [ text msg ]
-        , div
-            [ style "display" "flex"
-            , style "align-items" "center"
-            , style "justify-content" "center"
-            , style "width" "70%"
-            ]
-            [ content
-            , pre [ style "padding" "2em" ] [ text (preModel 1 model) ]
-            ]
+        , content
         ]
-
-
-
--- type alias Model =
---     { redirectUri : Url
---     , error : Maybe String
---     , token : Maybe OAuth.Token
---     , profile : Maybe Profile
---     }
 
 
 viewSignInButton : Html Msg
@@ -306,67 +261,20 @@ viewProfile profile =
 
 
 
--- Formatting Helpers
-
-
-preString : Int -> String -> String
-preString maxSize str =
-    if String.length str > maxSize then
-        String.left maxSize str ++ "..."
-
-    else
-        str
-
-
-preRecord : Int -> String -> List ( String, String ) -> String
-preRecord n name fields =
-    let
-        preField ( k, v ) =
-            k ++ " = " ++ v
-
-        padded s =
-            "\n" ++ String.repeat (n * 2) " " ++ s
-    in
-    case fields of
-        [] ->
-            name
-
-        [ fst ] ->
-            name ++ " = { " ++ preField fst ++ " }"
-
-        fst :: rest ->
-            String.concat
-                [ name ++ " =" ++ padded "{ " ++ preField fst ++ padded ", "
-                , String.join (padded ", ") (List.map preField rest)
-                , padded "}"
-                ]
-
-
-preMaybe : (a -> String) -> Maybe a -> String
-preMaybe pre m =
-    case m of
-        Nothing ->
-            "Nothing"
-
-        Just a ->
-            "Just (" ++ pre a ++ ")"
-
-
-
 -- Constants / Google APIs endpoints
 -- Demo clientId, configured to target the github repository's gh-pages only
 
 
 clientId : String
 clientId =
-    "909608474358-sucp6e4js3nvfkfnab5t69qoelampt3t.apps.googleusercontent.com"
+    "909608474358-apio86lq9hvjobd3hiepgtrclthnc4q0.apps.googleusercontent.com"
 
 
 authorizationEndpoint : Url
 authorizationEndpoint =
     { protocol = Https
     , host = "accounts.google.com"
-    , path = "/o/oauth2/v2/auth/"
+    , path = "/o/oauth2/v2/auth"
     , port_ = Nothing
     , query = Nothing
     , fragment = Nothing
@@ -377,7 +285,7 @@ profileEndpoint : Url
 profileEndpoint =
     { protocol = Https
     , host = "www.googleapis.com"
-    , path = "/oauth2/v1/userinfo/"
+    , path = "/oauth2/v1/userinfo"
     , port_ = Nothing
     , query = Nothing
     , fragment = Nothing
