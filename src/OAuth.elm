@@ -49,14 +49,15 @@ used.
 
 import Http
 import Json.Decode as Json
+import Url exposing (Url)
 
 
 {-| Request configuration for an authorization (Authorization Code & Implicit flows)
 -}
 type alias Authorization =
     { clientId : String
-    , url : String
-    , redirectUri : String
+    , url : Url
+    , redirectUri : Url
     , responseType : ResponseType
     , scope : List String
     , state : Maybe String
@@ -138,30 +139,30 @@ type Authentication
     = AuthorizationCode
         { credentials : Credentials
         , code : String
-        , redirectUri : String
+        , redirectUri : Url
         , scope : List String
         , state : Maybe String
-        , url : String
+        , url : Url
         }
     | ClientCredentials
         { credentials : Credentials
         , scope : List String
         , state : Maybe String
-        , url : String
+        , url : Url
         }
     | Password
         { credentials : Maybe Credentials
         , password : String
         , scope : List String
         , state : Maybe String
-        , url : String
+        , url : Url
         , username : String
         }
     | Refresh
         { credentials : Maybe Credentials
         , token : Token
         , scope : List String
-        , url : String
+        , url : Url
         }
 
 

@@ -16,6 +16,7 @@ import Browser.Navigation as Navigation
 import Http as Http
 import OAuth exposing (..)
 import OAuth.Decode exposing (..)
+import Url exposing (Protocol(..), Url)
 import Url.Builder as Url exposing (QueryParameter)
 import Url.Parser.Query as Query
 
@@ -25,14 +26,22 @@ authorize { clientId, url, redirectUri, responseType, scope, state } =
     let
         qs =
             [ Url.string "client_id" clientId
-            , Url.string "redirect_uri" redirectUri
+            , Url.string "redirect_uri" (fmtRedirectUri redirectUri)
             , Url.string "response_type" (showResponseType responseType)
             ]
                 |> urlAddList "scope" scope
                 |> urlAddMaybe "state" state
                 |> Url.toQuery
+
+        targetUrl =
+            case url.query of
+                Nothing ->
+                    String.dropRight 1 (Url.toString url) ++ qs
+
+                Just _ ->
+                    String.dropRight 1 (Url.toString url) ++ "&" ++ String.dropLeft 1 qs
     in
-    Navigation.load (url ++ qs)
+    Navigation.load targetUrl
 
 
 authenticate : AdjustRequest ResponseToken -> Authentication -> Http.Request ResponseToken
@@ -43,7 +52,7 @@ authenticate adjust authentication =
                 body =
                     [ Url.string "grant_type" "authorization_code"
                     , Url.string "client_id" credentials.clientId
-                    , Url.string "redirect_uri" redirectUri
+                    , Url.string "redirect_uri" (fmtRedirectUri redirectUri)
                     , Url.string "code" code
                     ]
                         |> urlAddList "scope" scope
@@ -113,13 +122,13 @@ authenticate adjust authentication =
             makeRequest adjust url headers body
 
 
-makeRequest : AdjustRequest ResponseToken -> String -> List Http.Header -> String -> Http.Request ResponseToken
+makeRequest : AdjustRequest ResponseToken -> Url -> List Http.Header -> String -> Http.Request ResponseToken
 makeRequest adjust url headers body =
     let
         requestParts =
             { method = "POST"
             , headers = headers
-            , url = url
+            , url = Url.toString url
             , body = Http.stringBody "application/x-www-form-urlencoded" body
             , expect = Http.expectJson responseDecoder
             , timeout = Nothing
@@ -204,3 +213,25 @@ urlAddMaybe param ms qs =
 qsSpaceSeparatedList : String -> Query.Parser (List String)
 qsSpaceSeparatedList param =
     Query.map (\s -> Maybe.withDefault "" s |> String.split " ") (Query.string param)
+
+
+showProtocol : Protocol -> String
+showProtocol protocol =
+    case protocol of
+        Http ->
+            "http"
+
+        Https ->
+            "https"
+
+
+fmtRedirectUri : Url -> String
+fmtRedirectUri url =
+    String.concat
+        [ showProtocol url.protocol
+        , "://"
+        , url.host
+        , Maybe.withDefault "" (Maybe.map (\i -> ":" ++ String.fromInt i) url.port_)
+        , url.path
+        , Maybe.withDefault "" (Maybe.map (\q -> "?" ++ q) url.query)
+        ]

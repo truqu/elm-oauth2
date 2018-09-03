@@ -31,7 +31,7 @@ main =
 type alias Model =
     { oauth :
         { clientId : String
-        , redirectUri : String
+        , redirectUri : Url
         }
     , error : Maybe String
     , token : Maybe OAuth.Token
@@ -78,10 +78,7 @@ init : () -> Url -> Key -> ( Model, Cmd Msg )
 init _ origin navKey =
     let
         model =
-            { oauth =
-                { clientId = ""
-                , redirectUri = mkRedirectUrl origin
-                }
+            { oauth = { clientId = "", redirectUri = origin }
             , error = Nothing
             , token = Nothing
             , profile = Nothing
@@ -107,7 +104,7 @@ getUserProfile endpoint token =
             , body = Http.emptyBody
             , headers = OAuth.use token []
             , withCredentials = False
-            , url = endpoint
+            , url = Url.toString endpoint
             , expect = Http.expectJson profileDecoder
             , timeout = Nothing
             }
@@ -301,39 +298,26 @@ viewProfile profile =
 
 
 
--- Helpers
-
-
-protocolToString : Protocol -> String
-protocolToString protocol =
-    case protocol of
-        Http ->
-            "http"
-
-        Https ->
-            "https"
-
-
-mkRedirectUrl : Url -> String
-mkRedirectUrl url =
-    String.concat
-        [ protocolToString url.protocol
-        , "://"
-        , url.host
-        , Maybe.withDefault "" (Maybe.map (\i -> ":" ++ String.fromInt i) url.port_)
-        , url.path
-        ]
-
-
-
 -- Constants / Google APIs endpoints
 
 
-authorizationEndpoint : String
+authorizationEndpoint : Url
 authorizationEndpoint =
-    "https://accounts.google.com/o/oauth2/v2/auth"
+    { protocol = Https
+    , host = "accounts.google.com"
+    , path = "/o/oauth2/v2/auth/"
+    , port_ = Nothing
+    , query = Nothing
+    , fragment = Nothing
+    }
 
 
-profileEndpoint : String
+profileEndpoint : Url
 profileEndpoint =
-    "https://www.googleapis.com/oauth2/v1/userinfo"
+    { protocol = Https
+    , host = "www.googleapis.com"
+    , path = "/oauth2/v1/userinfo/"
+    , port_ = Nothing
+    , query = Nothing
+    , fragment = Nothing
+    }
