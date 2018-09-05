@@ -2,6 +2,8 @@ module Main exposing (main)
 
 import Browser exposing (application)
 import Browser.Navigation as Navigation exposing (Key)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Http
 import Json.Decode as Json
 import OAuth
@@ -10,11 +12,20 @@ import OAuth.Examples.Common exposing (..)
 import Url exposing (Url)
 
 
-main : Program () Model Msg
+main : Program { randomBytes : String } Model Msg
 main =
     application
         { init = init
-        , view = view "Elm OAuth2 Example - AuthorizationCode Flow" { onSignIn = SignInRequested }
+        , view =
+            view "Elm OAuth2 Example - AuthorizationCode Flow"
+                { buttons =
+                    [ viewSignInButton Google SignInRequested
+                    , viewSignInButton Spotify SignInRequested
+                    , viewSignInButton LinkedIn SignInRequested
+                    ]
+                , sideNote = sideNote
+                , onSignOut = SignOutRequested
+                }
         , update = update
         , subscriptions = always Sub.none
         , onUrlRequest = always NoOp
@@ -33,39 +44,41 @@ type
     -- No Operation, terminal case
     = NoOp
       -- The 'sign-in' button has been hit
-    | SignInRequested
+    | SignInRequested OAuthConfiguration
+      -- The 'sign-out' button has been hit
+    | SignOutRequested
       -- Got a response from the googleapis token endpoint
-    | GotAccessToken (Result Http.Error OAuth.AuthorizationCode.AuthenticationSuccess)
+    | GotAccessToken OAuthConfiguration (Result Http.Error OAuth.AuthorizationCode.AuthenticationSuccess)
       -- Got a response from the googleapis info endpoint
     | GotUserInfo (Result Http.Error Profile)
 
 
-getUserInfo : Url -> OAuth.Token -> Cmd Msg
-getUserInfo endpoint token =
+getUserInfo : OAuthConfiguration -> OAuth.Token -> Cmd Msg
+getUserInfo { profileEndpoint, profileDecoder } token =
     Http.send GotUserInfo <|
         Http.request
             { method = "GET"
             , body = Http.emptyBody
             , headers = OAuth.useToken token []
             , withCredentials = False
-            , url = Url.toString endpoint
+            , url = Url.toString profileEndpoint
             , expect = Http.expectJson profileDecoder
             , timeout = Nothing
             }
 
 
-getAccessToken : Url -> Model -> String -> Cmd Msg
-getAccessToken endpoint model code =
-    Http.send GotAccessToken <|
+getAccessToken : OAuthConfiguration -> Url -> String -> Cmd Msg
+getAccessToken ({ clientId, secret, tokenEndpoint } as config) redirectUri code =
+    Http.send (GotAccessToken config) <|
         Http.request <|
             OAuth.AuthorizationCode.makeTokenRequest
                 { credentials =
                     { clientId = clientId
-                    , secret = Just clientSecret
+                    , secret = Just secret
                     }
                 , code = code
-                , url = endpoint
-                , redirectUri = model.redirectUri
+                , url = tokenEndpoint
+                , redirectUri = redirectUri
                 }
 
 
@@ -75,23 +88,30 @@ getAccessToken endpoint model code =
 --
 
 
-init : () -> Url -> Key -> ( Model, Cmd Msg )
-init _ origin _ =
+init : { randomBytes : String } -> Url -> Key -> ( Model, Cmd Msg )
+init { randomBytes } origin _ =
     let
         model =
-            makeInitModel origin
+            makeInitModel randomBytes origin
     in
     case OAuth.AuthorizationCode.parseCode origin of
         OAuth.AuthorizationCode.Success { code, state } ->
-            if state == Just model.state then
-                ( model
-                , getAccessToken tokenEndpoint model code
+            if Maybe.map randomBytesFromState state /= Just model.state then
+                ( { model | error = Just "'state' doesn't match, the request has likely been forged by an adversary!" }
+                , Cmd.none
                 )
 
             else
-                ( { model | error = Just "Request has been forged along the way: state doesn't match" }
-                , Cmd.none
-                )
+                case Maybe.andThen (Maybe.map configurationFor << oauthProviderFromState) state of
+                    Nothing ->
+                        ( { model | error = Just "Couldn't recover OAuthProvider from state" }
+                        , Cmd.none
+                        )
+
+                    Just config ->
+                        ( model
+                        , getAccessToken config model.redirectUri code
+                        )
 
         OAuth.AuthorizationCode.Empty ->
             ( model, Cmd.none )
@@ -114,13 +134,13 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        SignInRequested ->
+        SignInRequested { scope, provider, clientId, authorizationEndpoint } ->
             let
                 auth =
                     { clientId = clientId
                     , redirectUri = model.redirectUri
-                    , scope = [ "email", "profile" ]
-                    , state = Just model.state
+                    , scope = scope
+                    , state = Just (makeState model.state provider)
                     , url = authorizationEndpoint
                     }
             in
@@ -128,10 +148,15 @@ update msg model =
             , auth |> OAuth.AuthorizationCode.makeAuthUrl |> Url.toString |> Navigation.load
             )
 
-        GotAccessToken res ->
+        SignOutRequested ->
+            ( model
+            , Navigation.load (Url.toString model.redirectUri)
+            )
+
+        GotAccessToken config res ->
             case res of
                 Err (Http.BadStatus { body }) ->
-                    case Json.decodeString OAuth.AuthorizationCode.authenticationErrorDecoder body of
+                    case Json.decodeString OAuth.AuthorizationCode.defaultAuthenticationErrorDecoder body of
                         Ok { error, errorDescription } ->
                             let
                                 errMsg =
@@ -147,13 +172,13 @@ update msg model =
                             )
 
                 Err _ ->
-                    ( { model | error = Just "Unable to retrieve token: HTTP request failed." }
+                    ( { model | error = Just "Unable to retrieve token: HTTP request failed. CORS is likely disabled on the authorization server." }
                     , Cmd.none
                     )
 
                 Ok { token } ->
                     ( { model | token = Just token }
-                    , getUserInfo profileEndpoint token
+                    , getUserInfo config token
                     )
 
         GotUserInfo res ->
@@ -167,3 +192,34 @@ update msg model =
                     ( { model | profile = Just profile }
                     , Cmd.none
                     )
+
+
+
+--
+-- Side Note
+--
+
+
+sideNote : List (Html msg)
+sideNote =
+    [ h1 [] [ text "Authorization Code" ]
+    , p []
+        [ text """
+This simple demo gives an example on how to implement the OAuth-2.0
+Authorization Code grant using Elm. Keep in mind that this example
+is fully written Elm whereas you'd likely to the 'authentication' step
+server-side. Actually, most well-known authorization servers don't
+enable CORS on the authentication endpoint, making it impossible to perform
+this operation client-side.
+  """
+        ]
+    , p []
+        [ text "A few interesting notes about this demo:"
+        , br [] []
+        , ul []
+            [ li [ style "margin" "0.5em 0" ] [ text "This demo application requires basic scopes from the authorization servers in order to display your name and profile picture, illustrating the demo." ]
+            , li [ style "margin" "0.5em 0" ] [ text "You can observe the URL in the browser navigation bar and requests made against the authorization servers!" ]
+            , li [ style "margin" "0.5em 0" ] [ text "None of the 'authentication' steps in this demo will work for it uses dummy secrets. Yet, it is still possible to do the 'authorization' step to retrieve an authorization code. You may try to submit this code via cURL to obtain an access token." ]
+            ]
+        ]
+    ]
