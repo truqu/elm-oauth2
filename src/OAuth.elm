@@ -1,7 +1,6 @@
 module OAuth exposing
-    ( Token, useToken
+    ( Token, useToken, makeToken, makeRefreshToken, tokenToString, tokenFromString
     , ErrorCode(..), errorCodeToString, errorCodeFromString
-    , tokenFromString, tokenToString
     )
 
 {-| Utility library to manage client-side OAuth 2.0 authentications
@@ -33,7 +32,7 @@ used.
 
 ## Token
 
-@docs Token, useToken, tokenToString. tokenFromString
+@docs Token, useToken, makeToken, makeRefreshToken, tokenToString, tokenFromString
 
 
 ## ErrorCode
@@ -63,11 +62,62 @@ type Token
     = Bearer String
 
 
+type alias TokenType =
+    String
+
+
+type alias TokenString =
+    String
+
+
 {-| Use a token to authenticate a request.
 -}
 useToken : Token -> List Http.Header -> List Http.Header
 useToken token =
     (::) (Http.header "Authorization" (tokenToString token))
+
+
+makeToken : Maybe TokenType -> Maybe TokenString -> Maybe Token
+makeToken mTokenType mToken =
+    let
+        construct a b =
+            tokenFromString (a ++ " " ++ b)
+    in
+    maybeAndThen2 construct mTokenType mToken
+
+
+makeRefreshToken : TokenType -> Maybe TokenString -> Maybe (Maybe Token)
+makeRefreshToken tokenType mToken =
+    let
+        construct a b =
+            tokenFromString (a ++ " " ++ b)
+    in
+    case ( mToken, maybeAndThen2 construct (Just tokenType) mToken ) of
+        ( Nothing, _ ) ->
+            Just Nothing
+
+        ( _, Just token ) ->
+            Just <| Just token
+
+        _ ->
+            Nothing
+
+
+{-| Gets the `String` representation of a `Token` to be used in an 'Authorization' header
+-}
+tokenToString : Token -> String
+tokenToString (Bearer t) =
+    "Bearer " ++ t
+
+
+tokenFromString : String -> Maybe Token
+tokenFromString str =
+    case ( String.left 6 str, String.dropLeft 7 str ) of
+        ( "Bearer", t ) ->
+            Just (Bearer t)
+
+        _ ->
+            Nothing
 
 
 
@@ -111,19 +161,6 @@ type ErrorCode
     | Custom String
 
 
-
---
--- String Utilities
---
-
-
-{-| Gets the `String` representation of a `Token` to be used in an 'Authorization' header
--}
-tokenToString : Token -> String
-tokenToString (Bearer t) =
-    "Bearer " ++ t
-
-
 {-| Gets the `String` representation of an `ErrorCode`.
 -}
 errorCodeToString : ErrorCode -> String
@@ -154,22 +191,6 @@ errorCodeToString err =
             str
 
 
-
---
--- (Smart) Constructors
---
-
-
-tokenFromString : String -> Maybe Token
-tokenFromString str =
-    case ( String.left 6 str, String.dropLeft 7 str ) of
-        ( "Bearer", t ) ->
-            Just (Bearer t)
-
-        _ ->
-            Nothing
-
-
 errorCodeFromString : String -> ErrorCode
 errorCodeFromString str =
     case str of
@@ -196,3 +217,14 @@ errorCodeFromString str =
 
         _ ->
             Custom str
+
+
+
+--
+-- Utils
+--
+
+
+maybeAndThen2 : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
+maybeAndThen2 fn ma mb =
+    Maybe.andThen identity (Maybe.map2 fn ma mb)

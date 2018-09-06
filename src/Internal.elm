@@ -1,4 +1,4 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), TokenString, TokenType, authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthUrl, makeHeaders, makeRedirectUri, makeRefreshToken, makeRequest, makeToken, maybeAndThen2, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateDecoder, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
 
 import Base64
 import Http as Http
@@ -8,119 +8,6 @@ import Url exposing (Protocol(..), Url)
 import Url.Builder as Builder exposing (QueryParameter)
 import Url.Parser as Url
 import Url.Parser.Query as Query
-
-
-{-| Parts required to build a request. This record is given to `Http.request` in order
-to create a new request and may be adjusted at will.
--}
-type alias RequestParts a =
-    { method : String
-    , headers : List Http.Header
-    , url : String
-    , body : Http.Body
-    , expect : Http.Expect a
-    , timeout : Maybe Float
-    , withCredentials : Bool
-    }
-
-
-{-| Request configuration for an authorization (Authorization Code & Implicit flows)
--}
-type alias Authorization =
-    { clientId : String
-    , url : Url
-    , redirectUri : Url
-    , scope : List String
-    , state : Maybe String
-    }
-
-
-{-| Describes an OAuth error as a result of an authorization request failure
-
-  - error (_REQUIRED_):
-    A single ASCII error code.
-
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
-    include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
-
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
-
-  - state (_REQUIRED if `state` was present in the authorization request_):
-    The exact value received from the client
-
--}
-type alias AuthorizationError e =
-    { error : e
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
-    , state : Maybe String
-    }
-
-
-{-| The response obtained as a result of an authentication (implicit or not)
-
-  - token (_REQUIRED_):
-    The access token issued by the authorization server.
-
-  - refreshToken (_OPTIONAL_):
-    The refresh token, which can be used to obtain new access tokens using the same authorization
-    grant as described in [Section 6](https://tools.ietf.org/html/rfc6749#section-6).
-
-  - expiresIn (_RECOMMENDED_):
-    The lifetime in seconds of the access token. For example, the value "3600" denotes that the
-    access token will expire in one hour from the time the response was generated. If omitted, the
-    authorization server SHOULD provide the expiration time via other means or document the default
-    value.
-
-  - scope (_OPTIONAL, if identical to the scope requested; otherwise, REQUIRED_):
-    The scope of the access token as described by [Section 3.3](https://tools.ietf.org/html/rfc6749#section-3.3).
-
--}
-type alias AuthenticationSuccess =
-    { token : Token
-    , refreshToken : Maybe Token
-    , expiresIn : Maybe Int
-    , scope : List String
-    }
-
-
-{-| Describes an OAuth error as a result of a request failure
-
-  - error (_REQUIRED_):
-    A single ASCII error code.
-
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
-    include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
-
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
-
--}
-type alias AuthenticationError e =
-    { error : e
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
-    }
-
-
-{-| Describes the desired type of response to an authorization. Use `Code` to ask for an
-authorization code and continue with the according flow. Use `Token` to do an implicit
-authentication and directly retrieve a `Token` from the authorization.
--}
-type ResponseType
-    = Code
-    | Token
 
 
 
@@ -176,18 +63,11 @@ lenientScopeDecoder =
                     ]
 
 
-{-| Json decoder for a state
--}
-stateDecoder : Json.Decoder (Maybe String)
-stateDecoder =
-    Json.maybe <| Json.field "state" Json.string
-
-
 {-| Json decoder for an access token
 -}
 tokenDecoder : Json.Decoder Token
 tokenDecoder =
-    Json.andThen decoderFromResult <|
+    Json.andThen (decoderFromJust "missing or invalid 'access_token' / 'token_type'") <|
         Json.map2 makeToken
             (Json.field "token_type" Json.string |> Json.map Just)
             (Json.field "access_token" Json.string |> Json.map Just)
@@ -197,7 +77,7 @@ tokenDecoder =
 -}
 refreshTokenDecoder : Json.Decoder (Maybe Token)
 refreshTokenDecoder =
-    Json.andThen decoderFromResult <|
+    Json.andThen (decoderFromJust "missing or invalid 'refresh_token' / 'token_type'") <|
         Json.map2 makeRefreshToken
             (Json.field "token_type" Json.string)
             (Json.field "refresh_token" Json.string |> Json.maybe)
@@ -224,6 +104,27 @@ errorUriDecoder =
     Json.maybe <| Json.field "error_uri" Json.string
 
 
+{-| Combinator for JSON decoders to extract values from a `Maybe` or fail
+with the given message (when `Nothing` is encountered)
+-}
+decoderFromJust : String -> Maybe a -> Json.Decoder a
+decoderFromJust msg =
+    Maybe.map Json.succeed >> Maybe.withDefault (Json.fail msg)
+
+
+{-| Combinator for JSON decoders to extact values from a `Result _ _` or fail
+with an appropriate message
+-}
+decoderFromResult : Result String a -> Json.Decoder a
+decoderFromResult res =
+    case res of
+        Err msg ->
+            Json.fail msg
+
+        Ok a ->
+            Json.succeed a
+
+
 
 --
 -- Query Parsers
@@ -238,7 +139,7 @@ authorizationErrorParser errorCode =
         stateParser
 
 
-tokenParser : Query.Parser (Result String Token)
+tokenParser : Query.Parser (Maybe Token)
 tokenParser =
     Query.map2 makeToken
         (Query.string "token_type")
@@ -279,6 +180,30 @@ errorUriParser =
 spaceSeparatedListParser : String -> Query.Parser (List String)
 spaceSeparatedListParser param =
     Query.map (\s -> Maybe.withDefault "" s |> String.split " ") (Query.string param)
+
+
+urlAddList : String -> List String -> List QueryParameter -> List QueryParameter
+urlAddList param xs qs =
+    qs
+        ++ (case xs of
+                [] ->
+                    []
+
+                _ ->
+                    [ Builder.string param (String.join " " xs) ]
+           )
+
+
+urlAddMaybe : String -> Maybe String -> List QueryParameter -> List QueryParameter
+urlAddMaybe param ms qs =
+    qs
+        ++ (case ms of
+                Nothing ->
+                    []
+
+                Just s ->
+                    [ Builder.string param s ]
+           )
 
 
 
@@ -340,45 +265,6 @@ makeRedirectUri url =
         ]
 
 
-type alias TokenType =
-    String
-
-
-type alias TokenString =
-    String
-
-
-makeToken : Maybe TokenType -> Maybe TokenString -> Result String Token
-makeToken mTokenType mToken =
-    let
-        construct a b =
-            tokenFromString (a ++ " " ++ b)
-    in
-    case maybeAndThen2 construct mTokenType mToken of
-        Just token ->
-            Ok <| token
-
-        _ ->
-            Err "missing or invalid combination of 'access_token' and 'token_type' field(s)"
-
-
-makeRefreshToken : TokenType -> Maybe TokenString -> Result String (Maybe Token)
-makeRefreshToken tokenType mToken =
-    let
-        construct a b =
-            tokenFromString (a ++ " " ++ b)
-    in
-    case ( mToken, maybeAndThen2 construct (Just tokenType) mToken ) of
-        ( Nothing, _ ) ->
-            Ok <| Nothing
-
-        ( _, Just token ) ->
-            Ok <| Just token
-
-        _ ->
-            Err "missing or invalid combination of 'refresh_token' and 'token_type' field(s)"
-
-
 
 --
 -- String utilities
@@ -415,35 +301,6 @@ protocolToString protocol =
 --
 
 
-maybeAndThen2 : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
-maybeAndThen2 fn ma mb =
-    Maybe.andThen identity (Maybe.map2 fn ma mb)
-
-
-urlAddList : String -> List String -> List QueryParameter -> List QueryParameter
-urlAddList param xs qs =
-    qs
-        ++ (case xs of
-                [] ->
-                    []
-
-                _ ->
-                    [ Builder.string param (String.join " " xs) ]
-           )
-
-
-urlAddMaybe : String -> Maybe String -> List QueryParameter -> List QueryParameter
-urlAddMaybe param ms qs =
-    qs
-        ++ (case ms of
-                Nothing ->
-                    []
-
-                Just s ->
-                    [ Builder.string param s ]
-           )
-
-
 parseUrlQuery : Url -> a -> Query.Parser a -> a
 parseUrlQuery url def parser =
     Maybe.withDefault def <| Url.parse (Url.query parser) url
@@ -457,22 +314,59 @@ extractTokenString =
     tokenToString >> String.dropLeft 7
 
 
-{-| Combinator for JSON decoders to extract values from a `Maybe` or fail
-with the given message (when `Nothing` is encountered)
+{-| Describes the desired type of response to an authorization. Use `Code` to ask for an
+authorization code and continue with the according flow. Use `Token` to do an implicit
+authentication and directly retrieve a `Token` from the authorization.
 -}
-decoderFromJust : String -> Maybe a -> Json.Decoder a
-decoderFromJust msg =
-    Maybe.map Json.succeed >> Maybe.withDefault (Json.fail msg)
+type ResponseType
+    = Code
+    | Token
 
 
-{-| Combinator for JSON decoders to extact values from a `Result _ _` or fail
-with an appropriate message
--}
-decoderFromResult : Result String a -> Json.Decoder a
-decoderFromResult res =
-    case res of
-        Err msg ->
-            Json.fail msg
 
-        Ok a ->
-            Json.succeed a
+--
+-- Record Alias Re-Definition
+--
+
+
+type alias RequestParts a =
+    { method : String
+    , headers : List Http.Header
+    , url : String
+    , body : Http.Body
+    , expect : Http.Expect a
+    , timeout : Maybe Float
+    , withCredentials : Bool
+    }
+
+
+type alias Authorization =
+    { clientId : String
+    , url : Url
+    , redirectUri : Url
+    , scope : List String
+    , state : Maybe String
+    }
+
+
+type alias AuthorizationError e =
+    { error : e
+    , errorDescription : Maybe String
+    , errorUri : Maybe String
+    , state : Maybe String
+    }
+
+
+type alias AuthenticationSuccess =
+    { token : Token
+    , refreshToken : Maybe Token
+    , expiresIn : Maybe Int
+    , scope : List String
+    }
+
+
+type alias AuthenticationError e =
+    { error : e
+    , errorDescription : Maybe String
+    , errorUri : Maybe String
+    }
