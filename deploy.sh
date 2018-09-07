@@ -36,25 +36,12 @@ fi
 
 
 ## Create tag and publish
-trap 'untag $version' EXIT
+trap 'untag $version' 1
 git tag -d $version 1>/dev/null 2>&1
 git tag -a $version -m "release version $version" && git push origin $version
 elm publish || exit 1
 
 
 ## Deploy examples
-git checkout "gh-pages" || exit 1
-git merge --squash -
-git commit -m "tmp"
-cd examples
-for d in $examples ; do
-  elm make --optimize --output $d/bundle.min.js "$d/Main.elm"
-  git add -f $d/bundle.min.js
-done
-git commit -m "release version $version"
-git rebase HEAD~ --onto HEAD~2
-git push origin HEAD
-git checkout -
-
-
-echo "==========\nDONE."
+source ./deploy_examples.sh
+deploy_examples $version $examples
