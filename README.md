@@ -1,4 +1,4 @@
-Elm OAuth 2 [![](https://img.shields.io/badge/package.elm--lang.org-3.0.0-60b5cc.svg?style=flat-square)](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest) 
+Elm OAuth 2 [![](https://img.shields.io/badge/package.elm--lang.org-4.0.0-60b5cc.svg?style=flat-square)](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest) 
 =====
 
 This package offers some utilities to implement a client-side [OAuth 2](https://tools.ietf.org/html/rfc6749) authorization in Elm. 
@@ -34,11 +34,10 @@ elm install truqu/elm-oauth2
 ### Usage 
 
 Complete examples are available [here](https://github.com/truqu/elm-oauth2/tree/master/examples). 
-Resulting applications can be seen on the following links
+Resulting applications can be seen on the following links:
 
-- [implicit grant](https://truqu.github.io/elm-oauth2/examples/implicit)
-- [authorization-code](https://truqu.github.io/elm-oauth2/examples/authorization-code)
-- [client-credentials](https://truqu.github.io/elm-oauth2/examples/client-credentials)
+- [implicit grant](https://truqu.github.io/elm-oauth2/examples/implicit/)
+- [authorization-code](https://truqu.github.io/elm-oauth2/examples/authorization-code/)
 
 ### TroubleShooting
 
@@ -97,40 +96,63 @@ presents a flaw which makes it not compliant with the official RFC:
 
 Hence, this library provides a way to work around this implementation quirks by adjusting the 
 authentication request before it gets sent. To achieve this, one may use the various decoders
-now exposed in [OAuth.Decode](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth-Decode) 
-to craft a custom transformation function for the `authenticateWithOpts` functions.
+now exposed in each module to craft a custom transformation function for the `authenticateWithOpts` functions.
 
 Here's a small example of how to work around GitHub's API v3 implementation:
 
 ```elm
-adjustRequest : AdjustRequest ResponseToken
+adjustRequest : Http.Request AuthenticationSuccess -> Http.Request AuthenticationSuccess
 adjustRequest req =
     let
         headers =
             Http.header "Accept" ("application/json")  :: req.headers
 
         expect =
-            Http.expectJson lenientResponseDecoder
+            Http.expectJson <| Json.map4 AuthenticationSuccess
+              defaultTokenDecoder
+              defaultRefreshTokenDecoder
+              defaultExpiresInDecoder
+              lenientScopeDecoder
     in
         { req | headers = headers, expect = expect }
 
 
-getToken : String -> Cmd ResponseToken
+getToken : String -> Cmd AuthenticationSuccess
 getToken code =
     let
         req =
-            OAuth.AuthorizationCode.authenticateWithOpts adjustRequest <|
+          adjustRequest <| 
+            OAuth.AuthorizationCode.makeTokenRequest <|
                 OAuth.AuthorizationCode
-                    { credentials = { clientId = "clientId", secret = "secret" }
+                    { credentials = { clientId = clientId, secret = Nothing }
                     , code = code
-                    , redirectUri = "redirectUri"
-                    , scope = [ "whatever" ]
-                    , state = Nothing
-                    , url = "tokenEndpoint"
+                    , redirectUri = redirectUri
+                    , scope = scope
+                    , state = state
+                    , url = tokenEndpoint
                     }
     in
-        Http.send handleResponse req
+        Http.send handleResponse (Http.request req)
 ```
+
+
+##### Authentication rquests is the _Authorization Flow_ don't go through 
+
+Most authorization servers don't enable CORS on the authentication endpoints. For this reason,
+it's likely that the preflight _OPTIONS_ requests sent by the browser return an invalid
+answer, preventing the browser from making the request at all. 
+
+Why is it so? The authorization request _usually_requires one's secret; thus making them 
+rather impractical to do perform from a client-side application without exposing those secrets.
+As a security measure, most authorization servers choose to enforce that those requests are
+made server-side. 
+
+Generally, this is also what you want, unless you're dealing with a custom authorization server 
+in some sort of isolated environment. OAuth 2.0 is a designed to cover all sort of delegation of
+permissions, the case of user-facing client-side applications is only one of them; some 
+authorization flows are therefore not necessarily adapted to these cases. Usually, a client-side
+application will prefer the _Implicit Flow_ over the others.
+
 
 ## Changelog
 
