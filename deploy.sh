@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
+
+## Declare examples here
+examples=$(cd examples && find . -type d ! -path '*elm-stuff*' ! -path '*common*' ! -name '.')
 
 ## Verify nothing is unstaged or untracked
 status=$(git status -s)
@@ -9,13 +12,14 @@ if [ -n "$status" ]; then
 fi
 
 ## Verify code compiles
-elm make || exit 1
-for d in examples/*; do
-  if [ "$d" != "examples/images" ]; then
-    elm make "$d/Main.elm" || exit 1
-  fi
+echo "compiling library" && elm make || exit 1
+cd examples
+for d in $examples ; do
+  echo "compiling $d" && elm make --optimize "$d/Main.elm" || exit 1
 done
+cd -
 rm -f index.html
+
 
 ## Get version number
 version=$(cat elm.json | grep '"version"' | sed 's/\([^0-9]*\)\([0-9]\.[0-9]\.[0-9]\)\(.*\)/\2/')
@@ -26,20 +30,26 @@ else
   echo "VERSION: $version"
 fi
 
+
 ## Create tag and publish
-git tag -d $version
+git tag -d $version 1>/dev/null 2>&1
 git tag -a $version -m "release version $version" && git push origin $version
 elm publish || exit 1
 
+
 ## Deploy examples
 git checkout "gh-pages" || exit 1
-for d in examples/*; do
-  if [ "$d" != "examples/images" ]; then
-    elm make "$d/Main.elm"
-    mv index.html $d
-  fi
+git merge --squash -
+git commit -m "tmp"
+cd examples
+for d in $examples ; do
+  elm make --optimize --output $d/bundle.min.js "$d/Main.elm"
+  git add -f $d/bundle.min.js
 done
-git add . && git commit -m "release version $version"
-git push origin HEAD && git checkout -
+git commit -m "release version $version"
+git rebase HEAD~ --onto HEAD~2
+git push origin HEAD
+git checkout -
+
 
 echo "==========\nDONE."

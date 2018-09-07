@@ -1,4 +1,4 @@
-port module Main exposing (main)
+module Main exposing (main)
 
 import Browser exposing (application)
 import Browser.Navigation as Navigation exposing (Key)
@@ -7,8 +7,8 @@ import Html.Attributes exposing (..)
 import Http
 import Json.Decode as Json
 import OAuth
+import OAuth.AuthorizationCode
 import OAuth.Examples.Common exposing (..)
-import OAuth.Implicit
 import Url exposing (Url)
 
 
@@ -17,7 +17,7 @@ main =
     application
         { init = init
         , view =
-            view "Elm OAuth2 Example - Implicit Flow"
+            view "Elm OAuth2 Example - AuthorizationCode Flow"
                 { buttons =
                     [ viewSignInButton Google SignInRequested
                     , viewSignInButton Spotify SignInRequested
@@ -47,7 +47,9 @@ type
     | SignInRequested OAuthConfiguration
       -- The 'sign-out' button has been hit
     | SignOutRequested
-      -- Got a response from the googleapis user info
+      -- Got a response from the googleapis token endpoint
+    | GotAccessToken OAuthConfiguration (Result Http.Error OAuth.AuthorizationCode.AuthenticationSuccess)
+      -- Got a response from the googleapis info endpoint
     | GotUserInfo (Result Http.Error Profile)
 
 
@@ -65,6 +67,21 @@ getUserInfo { profileEndpoint, profileDecoder } token =
             }
 
 
+getAccessToken : OAuthConfiguration -> Url -> String -> Cmd Msg
+getAccessToken ({ clientId, secret, tokenEndpoint } as config) redirectUri code =
+    Http.send (GotAccessToken config) <|
+        Http.request <|
+            OAuth.AuthorizationCode.makeTokenRequest
+                { credentials =
+                    { clientId = clientId
+                    , secret = Just secret
+                    }
+                , code = code
+                , url = tokenEndpoint
+                , redirectUri = redirectUri
+                }
+
+
 
 --
 -- Init
@@ -77,11 +94,8 @@ init { randomBytes } origin _ =
         model =
             makeInitModel randomBytes origin
     in
-    case OAuth.Implicit.parseToken (queryAsFragment origin) of
-        OAuth.Implicit.Empty ->
-            ( model, Cmd.none )
-
-        OAuth.Implicit.Success { token, state } ->
+    case OAuth.AuthorizationCode.parseCode origin of
+        OAuth.AuthorizationCode.Success { code, state } ->
             if Maybe.map randomBytesFromState state /= Just model.state then
                 ( { model | error = Just "'state' doesn't match, the request has likely been forged by an adversary!" }
                 , Cmd.none
@@ -95,12 +109,15 @@ init { randomBytes } origin _ =
                         )
 
                     Just config ->
-                        ( { model | token = Just token }
-                        , getUserInfo config token
+                        ( model
+                        , getAccessToken config model.redirectUri code
                         )
 
-        OAuth.Implicit.Error { error, errorDescription } ->
-            ( { model | error = Just <| errorResponseToString { error = error, errorDescription = errorDescription } }
+        OAuth.AuthorizationCode.Empty ->
+            ( model, Cmd.none )
+
+        OAuth.AuthorizationCode.Error err ->
+            ( { model | error = Just (OAuth.errorCodeToString err.error) }
             , Cmd.none
             )
 
@@ -117,7 +134,7 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        SignInRequested { clientId, authorizationEndpoint, provider, scope } ->
+        SignInRequested { scope, provider, clientId, authorizationEndpoint } ->
             let
                 auth =
                     { clientId = clientId
@@ -128,7 +145,7 @@ update msg model =
                     }
             in
             ( model
-            , auth |> OAuth.Implicit.makeAuthUrl |> Url.toString |> Navigation.load
+            , auth |> OAuth.AuthorizationCode.makeAuthUrl |> Url.toString |> Navigation.load
             )
 
         SignOutRequested ->
@@ -136,10 +153,38 @@ update msg model =
             , Navigation.load (Url.toString model.redirectUri)
             )
 
+        GotAccessToken config res ->
+            case res of
+                Err (Http.BadStatus { body }) ->
+                    case Json.decodeString OAuth.AuthorizationCode.defaultAuthenticationErrorDecoder body of
+                        Ok { error, errorDescription } ->
+                            let
+                                errMsg =
+                                    "Unable to retrieve token: " ++ errorResponseToString { error = error, errorDescription = errorDescription }
+                            in
+                            ( { model | error = Just errMsg }
+                            , Cmd.none
+                            )
+
+                        _ ->
+                            ( { model | error = Just ("Unable to retrieve token: " ++ body) }
+                            , Cmd.none
+                            )
+
+                Err _ ->
+                    ( { model | error = Just "Unable to retrieve token: HTTP request failed. CORS is likely disabled on the authorization server." }
+                    , Cmd.none
+                    )
+
+                Ok { token } ->
+                    ( { model | token = Just token }
+                    , getUserInfo config token
+                    )
+
         GotUserInfo res ->
             case res of
-                Err err ->
-                    ( { model | error = Just "Unable to fetch user profile ¯\\_(ツ)_/¯" }
+                Err _ ->
+                    ( { model | error = Just "Unable to retrieve user profile: HTTP request failed." }
                     , Cmd.none
                     )
 
@@ -157,12 +202,15 @@ update msg model =
 
 sideNote : List (Html msg)
 sideNote =
-    [ h1 [] [ text "Implicit Flow" ]
+    [ h1 [] [ text "Authorization Code" ]
     , p []
         [ text """
 This simple demo gives an example on how to implement the OAuth-2.0
-Implicit grant using Elm. This is the recommended way for most client
-application as it doesn't expose any secret credentials to the end-user.
+Authorization Code grant using Elm. Keep in mind that this example
+is fully written Elm whereas you'd likely to the 'authentication' step
+server-side. Actually, most well-known authorization servers don't
+enable CORS on the authentication endpoint, making it impossible to perform
+this operation client-side.
   """
         ]
     , p []
@@ -171,7 +219,7 @@ application as it doesn't expose any secret credentials to the end-user.
         , ul []
             [ li [ style "margin" "0.5em 0" ] [ text "This demo application requires basic scopes from the authorization servers in order to display your name and profile picture, illustrating the demo." ]
             , li [ style "margin" "0.5em 0" ] [ text "You can observe the URL in the browser navigation bar and requests made against the authorization servers!" ]
-            , li [ style "margin" "0.5em 0" ] [ text "The LinkedIn implemention doesn't work as LinkedIn only supports the 'Authorization Code' grant. Though, the button is still here to show an example of error path." ]
+            , li [ style "margin" "0.5em 0" ] [ text "None of the 'authentication' steps in this demo will work for it uses dummy secrets. Yet, it is still possible to do the 'authorization' step to retrieve an authorization code. You may try to submit this code via cURL to obtain an access token." ]
             ]
         ]
     ]

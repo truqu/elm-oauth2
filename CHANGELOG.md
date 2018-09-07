@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.0.0 (2018-09-07)
+
+
+- (72f251a, 1327646) Documentation improvements
+
+- (0105ca3, 9a3b307, 5e3c841, 4801593) Review examples to be more complete, self-explanatory and clearer
+
+- (0ac7d90) Completely review internal implementation & exposed API 
+
 ## v3.0.0 (2018-09-03) 
 
 - (3a60354) Upgrade `src/` to `elm@0.19`
