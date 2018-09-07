@@ -1,5 +1,9 @@
 #!/bin/bash
 
+function untag () {
+  git push origin --delete $1
+}
+
 ## Declare examples here
 examples=$(cd examples && find . -type d ! -path '*elm-stuff*' ! -path '*common*' ! -name '.')
 
@@ -32,6 +36,7 @@ fi
 
 
 ## Create tag and publish
+trap 'untag $version' EXIT
 git tag -d $version 1>/dev/null 2>&1
 git tag -a $version -m "release version $version" && git push origin $version
 elm publish || exit 1
