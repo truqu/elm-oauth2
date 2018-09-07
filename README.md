@@ -31,13 +31,86 @@ It covers all 4 grant types:
 elm install truqu/elm-oauth2
 ```
 
-### Usage 
+### Usage
+
+##### 1/ A model ready to receive a token and a message to convey the sign-in request
+
+```elm
+type alias Model =
+    { redirectUri : Url
+    , error : Maybe String
+    , token : Maybe OAuth.Token
+    , state : String
+    }
+
+type Msg = SignInRequested { clientId : String, authorizationEndpoint : String }
+```
+
+##### 2/ Init parses the token from the URL if any, and defines a model
+
+```elm
+init : { randomBytes : String } -> Url -> Key -> ( Model, Cmd Msg )
+init { randomBytes } origin _ =
+    let
+        model =
+            { redirectUri = { origin | query = Nothing, fragment = Nothing }
+            , error = Nothing
+            , token = Nothing
+            , state = randomBytes
+            }
+    in
+    case OAuth.parseToken origin of
+        OAuth.Empty ->
+            ( model, Cmd.none )
+
+        OAuth.Success { token, state } ->
+            if state /= Just model.state then
+                ( { model | error = Just "'state' mismatch, request likely forged by an adversary!" }
+                , Cmd.none
+                )
+
+            else
+                ( { model | token = Just token }
+                , getUserInfo config token
+                )
+
+        OAuth.Implicit.Error error ->
+            ( { model | error = Just <| errorResponseToString error }
+            , Cmd.none
+            )
+```
+
+##### 3/ One replies to a sign-in request by redirecting the user to the authorization endpoint
+
+```elm
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        SignInRequested { clientId, authorizationEndpoint } ->
+            let
+                auth =
+                    { clientId = clientId
+                    , redirectUri = model.redirectUri
+                    , scope = []
+                    , state = Just model.state 
+                    , url = authorizationEndpoint
+                    }
+            in
+            ( model
+            , auth |> OAuth.Implicit.makeAuthUrl |> Url.toString |> Navigation.load
+            )
+```
+
+### Demo 
 
 Complete examples are available [here](https://github.com/truqu/elm-oauth2/tree/master/examples). 
 Resulting applications can be seen on the following links:
 
 - [implicit grant](https://truqu.github.io/elm-oauth2/examples/implicit/)
 - [authorization-code](https://truqu.github.io/elm-oauth2/examples/authorization-code/)
+
+[![](.github/demo.png)](https://truqu.github.io/elm-oauth2/examples/implicit/)
+
 
 ### TroubleShooting
 
