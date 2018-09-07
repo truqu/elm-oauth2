@@ -17,7 +17,7 @@ can be used in subsequent requests.
 
 ## Authenticate
 
-@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationErrorDecoder
+@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
 
 
 ## Json Decoders

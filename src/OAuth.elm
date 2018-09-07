@@ -1,6 +1,7 @@
 module OAuth exposing
-    ( Token, useToken, makeToken, makeRefreshToken, tokenToString, tokenFromString
+    ( Token, useToken, tokenToString, tokenFromString
     , ErrorCode(..), errorCodeToString, errorCodeFromString
+    , TokenType, TokenString, makeToken, makeRefreshToken
     )
 
 {-| Utility library to manage client-side OAuth 2.0 authentications
@@ -32,12 +33,17 @@ used.
 
 ## Token
 
-@docs Token, useToken, makeToken, makeRefreshToken, tokenToString, tokenFromString
+@docs Token, useToken, tokenToString, tokenFromString
 
 
 ## ErrorCode
 
 @docs ErrorCode, errorCodeToString, errorCodeFromString
+
+
+## Decoders & Parsers Utils (advanced)
+
+@docs TokenType, TokenString, makeToken, makeRefreshToken
 
 -}
 
@@ -62,10 +68,14 @@ type Token
     = Bearer String
 
 
+{-| Alias for readability
+-}
 type alias TokenType =
     String
 
 
+{-| Alias for readability
+-}
 type alias TokenString =
     String
 
@@ -77,6 +87,11 @@ useToken token =
     (::) (Http.header "Authorization" (tokenToString token))
 
 
+{-| Create a token from two string representing a token type and
+an actual token value. This is intended to be used in Json decoders
+or Query parsers. Returns 'Nothing' when the token type is Nothing
+, different from Just "Bearer" or when there's no token at all.
+-}
 makeToken : Maybe TokenType -> Maybe TokenString -> Maybe Token
 makeToken mTokenType mToken =
     let
@@ -86,6 +101,11 @@ makeToken mTokenType mToken =
     maybeAndThen2 construct mTokenType mToken
 
 
+{-| See 'makeToken', with the subtle difference that a token value may or
+may not be there. returns 'Nothing' when the token type isn't "Bearer", and
+'Just Nothing' or 'Just (Just token)' otherwise, depending on whether a token is
+present or not.
+-}
 makeRefreshToken : TokenType -> Maybe TokenString -> Maybe (Maybe Token)
 makeRefreshToken tokenType mToken =
     let
@@ -110,6 +130,11 @@ tokenToString (Bearer t) =
     "Bearer " ++ t
 
 
+{-| Parse a token from an 'Authorization' header string.
+
+      tokenFromString (tokenToString token) == Just token
+
+-}
 tokenFromString : String -> Maybe Token
 tokenFromString str =
     case ( String.left 6 str, String.dropLeft 7 str ) of
@@ -148,6 +173,9 @@ tokenFromString str =
   - TemporarilyUnavailable: The authorization server is currently unable to handle the request due to
     a temporary overloading or maintenance of the server. (This error code is needed because a 503
     Service Unavailable HTTP status code cannot be returned to the client via an HTTP redirect.)
+
+  - Custom: Encountered a 'free-string' or custom code not specified by the official RFC but returned
+    by the authorization server.
 
 -}
 type ErrorCode
@@ -191,6 +219,9 @@ errorCodeToString err =
             str
 
 
+{-| Builds a string back into an error code. Returns 'Custom \_'
+when the string isn't recognized from the ones specified in the RFC
+-}
 errorCodeFromString : String -> ErrorCode
 errorCodeFromString str =
     case str of

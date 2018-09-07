@@ -2,7 +2,7 @@ module OAuth.AuthorizationCode exposing
     ( Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, parseCode, makeAuthUrl
     , parseCodeWith
     , Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
-    , Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationErrorParser
+    , Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     )
 
@@ -40,7 +40,7 @@ request.
 
 ## Query Parsers
 
-@docs Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser code, defaultAuthorizationErrorParser
+@docs Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
 
 
 ## Json Decoders
