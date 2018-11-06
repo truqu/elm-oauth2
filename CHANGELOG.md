@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.0.1 (2018-10-06)
+
+- (15e4e82) Bug Fix: make token\_type parsing case-insensitive.
+
+
 ## v4.0.0 (2018-09-07)
 
 
