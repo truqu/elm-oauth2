@@ -93,12 +93,8 @@ or Query parsers. Returns 'Nothing' when the token type is Nothing
 , different from Just "Bearer" or when there's no token at all.
 -}
 makeToken : Maybe TokenType -> Maybe TokenString -> Maybe Token
-makeToken mTokenType mToken =
-    let
-        construct a b =
-            tokenFromString (a ++ " " ++ b)
-    in
-    maybeAndThen2 construct mTokenType mToken
+makeToken =
+    maybeAndThen2 tryMakeToken
 
 
 {-| See 'makeToken', with the subtle difference that a token value may or
@@ -108,16 +104,26 @@ present or not.
 -}
 makeRefreshToken : TokenType -> Maybe TokenString -> Maybe (Maybe Token)
 makeRefreshToken tokenType mToken =
-    let
-        construct a b =
-            tokenFromString (a ++ " " ++ b)
-    in
-    case ( mToken, maybeAndThen2 construct (Just tokenType) mToken ) of
+    case ( mToken, maybeAndThen2 tryMakeToken (Just tokenType) mToken ) of
         ( Nothing, _ ) ->
             Just Nothing
 
         ( _, Just token ) ->
             Just <| Just token
+
+        _ ->
+            Nothing
+
+
+
+{- | Internal, attempt to make a Bearer token from a type and a token string -}
+
+
+tryMakeToken : TokenType -> TokenString -> Maybe Token
+tryMakeToken tokenType token =
+    case String.toLower tokenType of
+        "bearer" ->
+            Just (Bearer token)
 
         _ ->
             Nothing
