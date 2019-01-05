@@ -1,6 +1,7 @@
 module OAuth exposing
     ( Token, useToken, tokenToString, tokenFromString
     , ErrorCode(..), errorCodeToString, errorCodeFromString
+    , HttpError(..)
     , TokenType, TokenString, makeToken, makeRefreshToken
     )
 
@@ -41,6 +42,11 @@ used.
 @docs ErrorCode, errorCodeToString, errorCodeFromString
 
 
+## Http request errors
+
+@docs HttpError
+
+
 ## Decoders & Parsers Utils (advanced)
 
 @docs TokenType, TokenString, makeToken, makeRefreshToken
@@ -66,6 +72,16 @@ import Http as Http
 -}
 type Token
     = Bearer String
+
+
+{-| Like `Http.Error`, except `BadStatus` includes the returned body.
+-}
+type HttpError
+    = BadUrl String
+    | Timeout
+    | NetworkError
+    | BadStatus Int String
+    | BadBody String
 
 
 {-| Alias for readability

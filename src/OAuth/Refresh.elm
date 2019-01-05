@@ -29,7 +29,7 @@ can be used in subsequent requests.
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
+import OAuth exposing (ErrorCode(..), HttpError, Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 
@@ -128,7 +128,7 @@ type alias RequestParts a =
     , body : Http.Body
     , expect : Http.Expect a
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 
@@ -138,8 +138,8 @@ type alias RequestParts a =
         req = makeTokenRequest reqParts |> Http.request
 
 -}
-makeTokenRequest : Authentication -> RequestParts AuthenticationSuccess
-makeTokenRequest { credentials, scope, token, url } =
+makeTokenRequest : (Result HttpError AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest tagger { credentials, scope, token, url } =
     let
         body =
             [ Builder.string "grant_type" "refresh_token"
@@ -152,7 +152,7 @@ makeTokenRequest { credentials, scope, token, url } =
         headers =
             makeHeaders credentials
     in
-    makeRequest url headers body
+    makeRequest tagger url headers body
 
 
 

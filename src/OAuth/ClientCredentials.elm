@@ -31,7 +31,7 @@ request.
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
+import OAuth exposing (ErrorCode(..), HttpError, Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 
@@ -126,14 +126,14 @@ type alias AuthenticationError =
 {-| Parts required to build a request. This record is given to `Http.request` in order
 to create a new request and may be adjusted at will.
 -}
-type alias RequestParts a =
+type alias RequestParts msg =
     { method : String
     , headers : List Http.Header
     , url : String
     , body : Http.Body
-    , expect : Http.Expect a
+    , expect : Http.Expect msg
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 
@@ -143,8 +143,8 @@ type alias RequestParts a =
         req = makeTokenRequest authentication |> Http.request
 
 -}
-makeTokenRequest : Authentication -> RequestParts AuthenticationSuccess
-makeTokenRequest { credentials, scope, url } =
+makeTokenRequest : (Result HttpError AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest tagger { credentials, scope, url } =
     let
         body =
             [ Builder.string "grant_type" "client_credentials" ]
@@ -159,7 +159,7 @@ makeTokenRequest { credentials, scope, url } =
                     , secret = credentials.secret
                     }
     in
-    makeRequest url headers body
+    makeRequest tagger url headers body
 
 
 

@@ -233,16 +233,40 @@ makeAuthUrl responseType { clientId, url, redirectUri, scope, state } =
             { url | query = Just (baseQuery ++ "&" ++ query) }
 
 
-makeRequest : Url -> List Http.Header -> String -> RequestParts AuthenticationSuccess
-makeRequest url headers body =
+makeRequest : (Result HttpError AuthenticationSuccess -> msg) -> Url -> List Http.Header -> String -> RequestParts msg
+makeRequest tagger url headers body =
     { method = "POST"
     , headers = headers
     , url = Url.toString url
     , body = Http.stringBody "application/x-www-form-urlencoded" body
-    , expect = Http.expectJson authenticationSuccessDecoder
+    , expect = Http.expectStringResponse tagger authenticationResponseHandler
     , timeout = Nothing
-    , withCredentials = False
+    , tracker = Nothing
     }
+
+
+authenticationResponseHandler : Http.Response String -> Result HttpError AuthenticationSuccess
+authenticationResponseHandler response =
+    case response of
+        Http.BadUrl_ string ->
+            Err <| BadUrl string
+
+        Http.Timeout_ ->
+            Err Timeout
+
+        Http.NetworkError_ ->
+            Err NetworkError
+
+        Http.BadStatus_ metadata body ->
+            Err <| BadStatus metadata.statusCode body
+
+        Http.GoodStatus_ _ body ->
+            case Json.decodeString authenticationSuccessDecoder body of
+                Ok success ->
+                    Ok success
+
+                Err err ->
+                    Err (BadBody <| Json.errorToString err)
 
 
 makeHeaders : Maybe { clientId : String, secret : String } -> List Http.Header
@@ -329,14 +353,14 @@ type ResponseType
 --
 
 
-type alias RequestParts a =
+type alias RequestParts msg =
     { method : String
     , headers : List Http.Header
     , url : String
     , body : Http.Body
-    , expect : Http.Expect a
+    , expect : Http.Expect msg
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 
