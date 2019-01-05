@@ -174,42 +174,47 @@ now exposed in each module to craft a custom transformation function for the `au
 Here's a small example of how to work around GitHub's API v3 implementation:
 
 ```elm
-adjustRequest : Http.Request AuthenticationSuccess -> Http.Request AuthenticationSuccess
-adjustRequest req =
+
+lenientAuthenticationSuccessDecoder : Json.Decoder AuthenticationSuccess
+lenientAuthenticationSuccessDecoder =
+  Json.map4 AuthenticationSuccess
+      defaultTokenDecoder
+      defaultRefreshTokenDecoder
+      defaultExpiresInDecoder
+      lenientScopeDecoder
+
+adjustRequest : (Result HttpError AuthenticationSuccess -> msg) -> RequestParts msg -> RequestParts msg
+adjustRequest tagger req =
     let
         headers =
             Http.header "Accept" ("application/json")  :: req.headers
 
         expect =
-            Http.expectJson <| Json.map4 AuthenticationSuccess
-              defaultTokenDecoder
-              defaultRefreshTokenDecoder
-              defaultExpiresInDecoder
-              lenientScopeDecoder
+            Http.expectStringResponse tagger
+                (authenticationResponseHandler lenientAuthenticationSuccessDecoder)
     in
-        { req | headers = headers, expect = expect }
+    { req | headers = headers, expect = expect }
 
 
-getToken : String -> Cmd AuthenticationSuccess
-getToken code =
+getToken : (Result HttpError AuthenticationSuccess -> msg) -> String -> Cmd AuthenticationSuccess
+getToken tagger code =
     let
         req =
           adjustRequest <| 
-            OAuth.AuthorizationCode.makeTokenRequest <|
-                OAuth.AuthorizationCode
-                    { credentials = { clientId = clientId, secret = Nothing }
-                    , code = code
-                    , redirectUri = redirectUri
-                    , scope = scope
-                    , state = state
-                    , url = tokenEndpoint
-                    }
+              OAuth.AuthorizationCode.makeTokenRequest tagger <|
+                  { credentials = { clientId = clientId, secret = Nothing }
+                  , code = code
+                  , redirectUri = redirectUri
+                  , scope = scope
+                  , state = state
+                  , url = tokenEndpoint
+                  }
     in
-        Http.send handleResponse (Http.request req)
+    Http.request req
 ```
 
 
-##### Authentication rquests is the _Authorization Flow_ don't go through 
+##### Authentication requests in the _Authorization Flow_ don't go through 
 
 Most authorization servers don't enable CORS on the authentication endpoints. For this reason,
 it's likely that the preflight _OPTIONS_ requests sent by the browser return an invalid

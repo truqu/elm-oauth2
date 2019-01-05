@@ -1,4 +1,4 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationResponseHandler, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
 
 import Base64
 import Http as Http
@@ -239,14 +239,16 @@ makeRequest tagger url headers body =
     , headers = headers
     , url = Url.toString url
     , body = Http.stringBody "application/x-www-form-urlencoded" body
-    , expect = Http.expectStringResponse tagger authenticationResponseHandler
+    , expect =
+        Http.expectStringResponse tagger
+            (authenticationResponseHandler authenticationSuccessDecoder)
     , timeout = Nothing
     , tracker = Nothing
     }
 
 
-authenticationResponseHandler : Http.Response String -> Result HttpError AuthenticationSuccess
-authenticationResponseHandler response =
+authenticationResponseHandler : Json.Decoder AuthenticationSuccess -> Http.Response String -> Result HttpError AuthenticationSuccess
+authenticationResponseHandler decoder response =
     case response of
         Http.BadUrl_ string ->
             Err <| BadUrl string
@@ -261,7 +263,7 @@ authenticationResponseHandler response =
             Err <| BadStatus metadata.statusCode body
 
         Http.GoodStatus_ _ body ->
-            case Json.decodeString authenticationSuccessDecoder body of
+            case Json.decodeString decoder body of
                 Ok success ->
                     Ok success
 

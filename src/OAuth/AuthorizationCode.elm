@@ -1,7 +1,7 @@
 module OAuth.AuthorizationCode exposing
     ( Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, parseCode, makeAuthUrl
     , parseCodeWith
-    , Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
+    , Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationResponseHandler
     , Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     )
@@ -35,7 +35,7 @@ request.
 
 ## Authenticate
 
-@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
+@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest, authenticationResponseHandler
 
 
 ## Query Parsers
@@ -387,6 +387,16 @@ makeTokenRequest tagger { credentials, code, url, redirectUri } =
     makeRequest tagger url headers body
 
 
+{-| Allows you to adjust `RequestParts.expect` for an `Oauth.HttpError`.
+
+You'll want this if you need to use `defaultAuthenticationErrorDecoder` on the `body` of a `BadStatus` response.
+
+-}
+authenticationResponseHandler : Json.Decoder AuthenticationSuccess -> Http.Response String -> Result HttpError AuthenticationSuccess
+authenticationResponseHandler =
+    Internal.authenticationResponseHandler
+
+
 
 --
 -- Json Decoders
@@ -404,7 +414,7 @@ defaultAuthenticationSuccessDecoder =
 {-| Json decoder for an errored response.
 
     case res of
-        Err (Http.BadStatus { body }) ->
+        Err (OAuth.BadStatus { body }) ->
             case Json.decodeString OAuth.AuthorizationCode.defaultAuthenticationErrorDecoder body of
                 Ok { error, errorDescription } ->
                     doSomething
