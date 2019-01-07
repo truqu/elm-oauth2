@@ -55,31 +55,30 @@ type
 
 getUserInfo : OAuthConfiguration -> OAuth.Token -> Cmd Msg
 getUserInfo { profileEndpoint, profileDecoder } token =
-    Http.send GotUserInfo <|
-        Http.request
-            { method = "GET"
-            , body = Http.emptyBody
-            , headers = OAuth.useToken token []
-            , withCredentials = False
-            , url = Url.toString profileEndpoint
-            , expect = Http.expectJson profileDecoder
-            , timeout = Nothing
-            }
+    Http.request
+        { method = "GET"
+        , body = Http.emptyBody
+        , headers = OAuth.useToken token []
+        , url = Url.toString profileEndpoint
+        , expect = Http.expectJson GotUserInfo profileDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 
 getAccessToken : OAuthConfiguration -> Url -> String -> Cmd Msg
 getAccessToken ({ clientId, secret, tokenEndpoint } as config) redirectUri code =
-    Http.send (GotAccessToken config) <|
-        Http.request <|
-            OAuth.AuthorizationCode.makeTokenRequest
-                { credentials =
-                    { clientId = clientId
-                    , secret = Just secret
-                    }
-                , code = code
-                , url = tokenEndpoint
-                , redirectUri = redirectUri
+    Http.request <|
+        OAuth.AuthorizationCode.makeTokenRequest
+            { credentials =
+                { clientId = clientId
+                , secret = Just secret
                 }
+            , code = code
+            , url = tokenEndpoint
+            , redirectUri = redirectUri
+            }
+            (GotAccessToken config)
 
 
 
@@ -155,7 +154,7 @@ update msg model =
 
         GotAccessToken config res ->
             case res of
-                Err (Http.BadStatus { body }) ->
+                Err (Http.BadBody body) ->
                     case Json.decodeString OAuth.AuthorizationCode.defaultAuthenticationErrorDecoder body of
                         Ok { error, errorDescription } ->
                             let
