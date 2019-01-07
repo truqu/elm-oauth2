@@ -241,7 +241,7 @@ makeRequest url headers body funcResultToMsg =
     , body = Http.stringBody "application/x-www-form-urlencoded" body
     , expect = Http.expectJson funcResultToMsg authenticationSuccessDecoder
     , timeout = Nothing
-    , withCredentials = False
+    , tracker = Nothing
     }
 
 
@@ -336,7 +336,7 @@ type alias RequestParts a =
     , body : Http.Body
     , expect : Http.Expect a
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 

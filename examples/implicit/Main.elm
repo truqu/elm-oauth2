@@ -53,16 +53,15 @@ type
 
 getUserInfo : OAuthConfiguration -> OAuth.Token -> Cmd Msg
 getUserInfo { profileEndpoint, profileDecoder } token =
-    Http.send GotUserInfo <|
-        Http.request
-            { method = "GET"
-            , body = Http.emptyBody
-            , headers = OAuth.useToken token []
-            , withCredentials = False
-            , url = Url.toString profileEndpoint
-            , expect = Http.expectJson profileDecoder
-            , timeout = Nothing
-            }
+    Http.request
+        { method = "GET"
+        , body = Http.emptyBody
+        , headers = OAuth.useToken token []
+        , tracker = Nothing
+        , url = Url.toString profileEndpoint
+        , expect = Http.expectJson GotUserInfo profileDecoder
+        , timeout = Nothing
+        }
 
 
 

@@ -337,7 +337,7 @@ type alias RequestParts a =
     , body : Http.Body
     , expect : Http.Expect a
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 
