@@ -140,11 +140,11 @@ type alias RequestParts a =
 {-| Builds a the request components required to get a token from client credentials
 
     let req : Http.Request TokenResponse
-        req = makeTokenRequest authentication |> Http.request
+        req = makeTokenRequest authentication funcResultToMsg |> Http.request
 
 -}
-makeTokenRequest : Authentication -> RequestParts AuthenticationSuccess
-makeTokenRequest { credentials, scope, url } =
+makeTokenRequest : Authentication -> (Result Http.Error AuthenticationSuccess -> msg) -> RequestParts msg
+makeTokenRequest { credentials, scope, url } funcResultToMsg =
     let
         body =
             [ Builder.string "grant_type" "client_credentials" ]
@@ -159,7 +159,7 @@ makeTokenRequest { credentials, scope, url } =
                     , secret = credentials.secret
                     }
     in
-    makeRequest url headers body
+    makeRequest url headers body funcResultToMsg
 
 
 

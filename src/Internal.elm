@@ -233,13 +233,13 @@ makeAuthUrl responseType { clientId, url, redirectUri, scope, state } =
             { url | query = Just (baseQuery ++ "&" ++ query) }
 
 
-makeRequest : Url -> List Http.Header -> String -> RequestParts AuthenticationSuccess
-makeRequest url headers body =
+makeRequest : Url -> List Http.Header -> String -> (Result Http.Error AuthenticationSuccess -> msg) -> RequestParts msg
+makeRequest url headers body funcResultToMsg =
     { method = "POST"
     , headers = headers
     , url = Url.toString url
     , body = Http.stringBody "application/x-www-form-urlencoded" body
-    , expect = Http.expectJson authenticationSuccessDecoder
+    , expect = Http.expectJson funcResultToMsg authenticationSuccessDecoder
     , timeout = Nothing
     , withCredentials = False
     }
