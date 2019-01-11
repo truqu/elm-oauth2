@@ -247,7 +247,7 @@ makeRequest tagger url headers body =
     }
 
 
-authenticationResponseHandler : Json.Decoder AuthenticationSuccess -> Http.Response String -> Result HttpError AuthenticationSuccess
+authenticationResponseHandler : Json.Decoder a -> Http.Response String -> Result HttpError a
 authenticationResponseHandler decoder response =
     case response of
         Http.BadUrl_ string ->

@@ -359,8 +359,13 @@ type alias Credentials =
 
 {-| Builds a the request components required to get a token from an authorization code
 
-    let req : Http.Request AuthenticationSuccess
-        req = makeTokenRequest authentication |> Http.request
+    type Msg
+        = ReceiveTokenRequest (Result HttpError AuthenticationSuccess)
+    ...
+
+    let req : RequestParts msg
+        req = makeTokenRequest ReceiveTokenReqest authentication
+    ...
 
 -}
 makeTokenRequest : (Result HttpError AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
@@ -392,7 +397,7 @@ makeTokenRequest tagger { credentials, code, url, redirectUri } =
 You'll want this if you need to use `defaultAuthenticationErrorDecoder` on the `body` of a `BadStatus` response.
 
 -}
-authenticationResponseHandler : Json.Decoder AuthenticationSuccess -> Http.Response String -> Result HttpError AuthenticationSuccess
+authenticationResponseHandler : Json.Decoder a -> Http.Response String -> Result HttpError a
 authenticationResponseHandler =
     Internal.authenticationResponseHandler
 
@@ -414,7 +419,7 @@ defaultAuthenticationSuccessDecoder =
 {-| Json decoder for an errored response.
 
     case res of
-        Err (OAuth.BadStatus { body }) ->
+        Err (OAuth.BadStatus _ body) ->
             case Json.decodeString OAuth.AuthorizationCode.defaultAuthenticationErrorDecoder body of
                 Ok { error, errorDescription } ->
                     doSomething
