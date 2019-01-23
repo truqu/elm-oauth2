@@ -178,10 +178,10 @@ adjustRequest : Http.Request AuthenticationSuccess -> Http.Request Authenticatio
 adjustRequest req =
     let
         headers =
-            Http.header "Accept" ("application/json")  :: req.headers
+            Http.header "Accept" ("application/json") :: req.headers
 
         expect =
-            Http.expectJson <| Json.map4 AuthenticationSuccess
+            Http.expectJson AuthenticationSuccess <| Json.map4 
               defaultTokenDecoder
               defaultRefreshTokenDecoder
               defaultExpiresInDecoder
@@ -195,7 +195,7 @@ getToken code =
     let
         req =
           adjustRequest <| 
-            OAuth.AuthorizationCode.makeTokenRequest <|
+            OAuth.AuthorizationCode.makeTokenRequest AuthenticationSuccess <|
                 OAuth.AuthorizationCode
                     { credentials = { clientId = clientId, secret = Nothing }
                     , code = code
