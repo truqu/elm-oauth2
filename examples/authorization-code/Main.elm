@@ -70,6 +70,7 @@ getAccessToken : OAuthConfiguration -> Url -> String -> Cmd Msg
 getAccessToken ({ clientId, secret, tokenEndpoint } as config) redirectUri code =
     Http.request <|
         OAuth.AuthorizationCode.makeTokenRequest
+            (GotAccessToken config)
             { credentials =
                 { clientId = clientId
                 , secret = Just secret
@@ -78,7 +79,6 @@ getAccessToken ({ clientId, secret, tokenEndpoint } as config) redirectUri code 
             , url = tokenEndpoint
             , redirectUri = redirectUri
             }
-            (GotAccessToken config)
 
 
 

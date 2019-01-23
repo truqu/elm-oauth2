@@ -128,18 +128,18 @@ type alias RequestParts a =
     , body : Http.Body
     , expect : Http.Expect a
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 
 {-| Builds a the request components required to refresh a token
 
     let req : Http.Request TokenResponse
-        req = makeTokenRequest reqParts funcResultToMsg |> Http.request
+        req = makeTokenRequest toMsg reqParts |> Http.request
 
 -}
-makeTokenRequest : Authentication -> (Result Http.Error AuthenticationSuccess -> msg) -> RequestParts msg
-makeTokenRequest { credentials, scope, token, url } funcResultToMsg =
+makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest toMsg { credentials, scope, token, url } =
     let
         body =
             [ Builder.string "grant_type" "refresh_token"
@@ -152,7 +152,7 @@ makeTokenRequest { credentials, scope, token, url } funcResultToMsg =
         headers =
             makeHeaders credentials
     in
-    makeRequest url headers body funcResultToMsg
+    makeRequest toMsg url headers body
 
 
 

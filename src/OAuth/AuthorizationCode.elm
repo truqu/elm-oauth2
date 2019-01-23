@@ -360,11 +360,11 @@ type alias Credentials =
 {-| Builds a the request components required to get a token from an authorization code
 
     let req : Http.Request AuthenticationSuccess
-        req = makeTokenRequest authentication funcResultToMsg |> Http.request
+        req = makeTokenRequest toMsg authentication |> Http.request
 
 -}
-makeTokenRequest : Authentication -> (Result Http.Error AuthenticationSuccess -> msg) -> RequestParts msg
-makeTokenRequest { credentials, code, url, redirectUri } funcResultToMsg =
+makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest toMsg { credentials, code, url, redirectUri } =
     let
         body =
             [ Builder.string "grant_type" "authorization_code"
@@ -384,7 +384,7 @@ makeTokenRequest { credentials, code, url, redirectUri } funcResultToMsg =
                     Just secret ->
                         Just { clientId = credentials.clientId, secret = secret }
     in
-    makeRequest url headers body funcResultToMsg
+    makeRequest toMsg url headers body
 
 
 

@@ -136,18 +136,18 @@ type alias RequestParts a =
     , body : Http.Body
     , expect : Http.Expect a
     , timeout : Maybe Float
-    , withCredentials : Bool
+    , tracker : Maybe String
     }
 
 
 {-| Builds a the request components required to get a token from the resource owner (user) credentials
 
     let req : Http.Request TokenResponse
-        req = makeTokenRequest authentication funcResultToMsg |> Http.request
+        req = makeTokenRequest toMsg authentication |> Http.request
 
 -}
-makeTokenRequest : Authentication -> (Result Http.Error AuthenticationSuccess -> msg) -> RequestParts msg
-makeTokenRequest { credentials, password, scope, url, username } funcResultToMsg =
+makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest toMsg { credentials, password, scope, url, username } =
     let
         body =
             [ Builder.string "grant_type" "password"
@@ -161,7 +161,7 @@ makeTokenRequest { credentials, password, scope, url, username } funcResultToMsg
         headers =
             makeHeaders credentials
     in
-    makeRequest url headers body funcResultToMsg
+    makeRequest toMsg url headers body
 
 
 
