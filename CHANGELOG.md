@@ -1,5 +1,10 @@
 # Changelog
 
+## v5.0.0 (2019-01-23)
+
+- (d74016e, 333d6ea, 849d985, 78caba7) Upgrade `elm/http` to new major version `2.0.0`
+
+
 ## v4.0.1 (2018-10-06)
 
 - (15e4e82) Bug Fix: make token\_type parsing case-insensitive.
@@ -7,12 +12,12 @@
 
 ## v4.0.0 (2018-09-07)
 
-
 - (72f251a, 1327646) Documentation improvements
 
 - (0105ca3, 9a3b307, 5e3c841, 4801593) Review examples to be more complete, self-explanatory and clearer
 
 - (0ac7d90) Completely review internal implementation & exposed API 
+
 
 ## v3.0.0 (2018-09-03) 
 
