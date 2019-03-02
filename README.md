@@ -59,7 +59,7 @@ init { randomBytes } origin _ =
             , state = randomBytes
             }
     in
-    case OAuth.parseToken origin of
+    case OAuth.Implicit.parseToken origin of
         OAuth.Empty ->
             ( model, Cmd.none )
 
