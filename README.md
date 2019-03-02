@@ -63,7 +63,7 @@ init { randomBytes } origin _ =
         OAuth.Empty ->
             ( model, Cmd.none )
 
-        OAuth.Success { token, state } ->
+        OAuth.Implicit.Success { token, state } ->
             if state /= Just model.state then
                 ( { model | error = Just "'state' mismatch, request likely forged by an adversary!" }
                 , Cmd.none
