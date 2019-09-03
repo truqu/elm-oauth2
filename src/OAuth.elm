@@ -47,6 +47,7 @@ used.
 
 -}
 
+import Extra.Maybe as Maybe
 import Http as Http
 
 
@@ -97,7 +98,7 @@ Returns `Nothing` when the token type is `Nothing`
 -}
 makeToken : Maybe TokenType -> Maybe TokenString -> Maybe Token
 makeToken =
-    maybeAndThen2 tryMakeToken
+    Maybe.andThen2 tryMakeToken
 
 
 {-| See `makeToken`, with the subtle difference that a token value may or
@@ -111,7 +112,7 @@ present or not.
 -}
 makeRefreshToken : TokenType -> Maybe TokenString -> Maybe (Maybe Token)
 makeRefreshToken tokenType mToken =
-    case ( mToken, maybeAndThen2 tryMakeToken (Just tokenType) mToken ) of
+    case ( mToken, Maybe.andThen2 tryMakeToken (Just tokenType) mToken ) of
         ( Nothing, _ ) ->
             Just Nothing
 
@@ -259,14 +260,3 @@ errorCodeFromString str =
 
         _ ->
             Custom str
-
-
-
---
--- Utils
---
-
-
-maybeAndThen2 : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
-maybeAndThen2 fn ma mb =
-    Maybe.andThen identity (Maybe.map2 fn ma mb)
