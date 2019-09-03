@@ -59,11 +59,11 @@ init { randomBytes } origin _ =
             , state = randomBytes
             }
     in
-    case OAuth.parseToken origin of
+    case OAuth.Implicit.parseToken origin of
         OAuth.Empty ->
             ( model, Cmd.none )
 
-        OAuth.Success { token, state } ->
+        OAuth.Implicit.Success { token, state } ->
             if state /= Just model.state then
                 ( { model | error = Just "'state' mismatch, request likely forged by an adversary!" }
                 , Cmd.none
