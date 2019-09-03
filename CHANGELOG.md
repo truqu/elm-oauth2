@@ -1,4 +1,9 @@
-# Changelog
+## v5.1.0 (2019-09-03)
+
+- (267ca48) Internal small refactor
+- (43e536a) General documentation improvements 
+- (e34e16f) Rename 'makeAuthUrl' to 'makeAuthorizationUrl' 
+- (12ce2ba) Split-up README, extract troubleshooting and guides 
 
 ## v5.0.0 (2019-01-23)
 
