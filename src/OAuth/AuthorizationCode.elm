@@ -1,5 +1,5 @@
 module OAuth.AuthorizationCode exposing
-    ( Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, parseCode, makeAuthUrl
+    ( Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, parseCode, makeAuthorizationUrl
     , parseCodeWith
     , Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
     , Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
@@ -25,7 +25,7 @@ request.
 
 ## Authorize
 
-@docs Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError, parseCode, makeAuthUrl
+@docs Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError, parseCode, makeAuthorizationUrl
 
 
 ## Authorize (advanced)
@@ -140,9 +140,9 @@ type AuthorizationResult
 {-| Redirects the resource owner (user) to the resource provider server using the specified
 authorization flow.
 -}
-makeAuthUrl : Authorization -> Url
-makeAuthUrl =
-    Internal.makeAuthUrl Internal.Code
+makeAuthorizationUrl : Authorization -> Url
+makeAuthorizationUrl =
+    Internal.makeAuthorizationUrl Internal.Code
 
 
 {-| Parse the location looking for a parameters set by the resource provider server after

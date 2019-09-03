@@ -144,7 +144,7 @@ update msg model =
                     }
             in
             ( model
-            , auth |> OAuth.AuthorizationCode.makeAuthUrl |> Url.toString |> Navigation.load
+            , auth |> OAuth.AuthorizationCode.makeAuthorizationUrl |> Url.toString |> Navigation.load
             )
 
         SignOutRequested ->

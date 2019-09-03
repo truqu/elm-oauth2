@@ -97,7 +97,7 @@ update msg model =
                     }
             in
             ( model
-            , auth |> OAuth.Implicit.makeAuthUrl |> Url.toString |> Navigation.load
+            , auth |> OAuth.Implicit.makeAuthorizationUrl |> Url.toString |> Navigation.load
             )
 ```
 

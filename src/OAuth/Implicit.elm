@@ -1,5 +1,5 @@
 module OAuth.Implicit exposing
-    ( Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, makeAuthUrl, parseToken
+    ( makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
     , parseTokenWith
     , Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
@@ -14,13 +14,13 @@ This is a 2-step process:
   - The client asks for an authorization and implicit authentication to the OAuth provider: the user is redirected.
   - The provider redirects the user back and the client parses the request query parameters from the url.
 
-After those steps, the client owns an `access_token` that can be used to authorize any subsequent
+After those steps, the client owns an `Token` that can be used to authorize any subsequent
 request.
 
 
 ## Authorize
 
-@docs Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError, makeAuthUrl, parseToken
+@docs makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError
 
 
 ## Authorize (advanced)
@@ -133,9 +133,9 @@ type AuthorizationResult
 {-| Redirects the resource owner (user) to the resource provider server using the specified
 authorization flow.
 -}
-makeAuthUrl : Authorization -> Url
-makeAuthUrl =
-    Internal.makeAuthUrl Internal.Token
+makeAuthorizationUrl : Authorization -> Url
+makeAuthorizationUrl =
+    Internal.makeAuthorizationUrl Internal.Token
 
 
 {-| Parses the location looking for parameters in the 'fragment' set by the

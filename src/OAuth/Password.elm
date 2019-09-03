@@ -1,6 +1,7 @@
 module OAuth.Password exposing
-    ( Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
-    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+    ( makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
+    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
+    , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     )
 
 {-| The resource owner password credentials grant type is suitable in

@@ -1,4 +1,4 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
 
 import Base64
 import Http as Http
@@ -212,8 +212,8 @@ urlAddMaybe param ms qs =
 --
 
 
-makeAuthUrl : ResponseType -> Authorization -> Url
-makeAuthUrl responseType { clientId, url, redirectUri, scope, state } =
+makeAuthorizationUrl : ResponseType -> Authorization -> Url
+makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state } =
     let
         query =
             [ Builder.string "client_id" clientId
