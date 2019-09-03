@@ -61,7 +61,7 @@ import Http as Http
   - Bearer: Utilized by simply including the access token string in the request
     [rfc6750](https://tools.ietf.org/html/rfc6750)
 
-  - Mac: Not yet supported.
+  - Mac: Not supported.
 
 -}
 type Token
@@ -89,18 +89,25 @@ useToken token =
 
 {-| Create a token from two string representing a token type and
 an actual token value. This is intended to be used in Json decoders
-or Query parsers. Returns 'Nothing' when the token type is Nothing
-, different from Just "Bearer" or when there's no token at all.
+or Query parsers.
+
+Returns `Nothing` when the token type is `Nothing`
+, different from `Just "Bearer"` or when there's no token at all.
+
 -}
 makeToken : Maybe TokenType -> Maybe TokenString -> Maybe Token
 makeToken =
     maybeAndThen2 tryMakeToken
 
 
-{-| See 'makeToken', with the subtle difference that a token value may or
-may not be there. returns 'Nothing' when the token type isn't "Bearer", and
-'Just Nothing' or 'Just (Just token)' otherwise, depending on whether a token is
+{-| See `makeToken`, with the subtle difference that a token value may or
+may not be there.
+
+Returns `Nothing` when the token type isn't `"Bearer"`.
+
+Returns `Just Nothing` or `Just (Just token)` otherwise, depending on whether a token is
 present or not.
+
 -}
 makeRefreshToken : TokenType -> Maybe TokenString -> Maybe (Maybe Token)
 makeRefreshToken tokenType mToken =
@@ -115,10 +122,8 @@ makeRefreshToken tokenType mToken =
             Nothing
 
 
-
-{- | Internal, attempt to make a Bearer token from a type and a token string -}
-
-
+{-| Internal, attempt to make a Bearer token from a type and a token string
+-}
 tryMakeToken : TokenType -> TokenString -> Maybe Token
 tryMakeToken tokenType token =
     case String.toLower tokenType of
@@ -129,7 +134,7 @@ tryMakeToken tokenType token =
             Nothing
 
 
-{-| Gets the `String` representation of a `Token` to be used in an 'Authorization' header
+{-| Get the `String` representation of a `Token` to be used in an 'Authorization' header
 -}
 tokenToString : Token -> String
 tokenToString (Bearer t) =
@@ -195,7 +200,7 @@ type ErrorCode
     | Custom String
 
 
-{-| Gets the `String` representation of an `ErrorCode`.
+{-| Get the `String` representation of an `ErrorCode`.
 -}
 errorCodeToString : ErrorCode -> String
 errorCodeToString err =
@@ -225,7 +230,7 @@ errorCodeToString err =
             str
 
 
-{-| Builds a string back into an error code. Returns 'Custom \_'
+{-| Build a string back into an error code. Returns `Custom _`
 when the string isn't recognized from the ones specified in the RFC
 -}
 errorCodeFromString : String -> ErrorCode

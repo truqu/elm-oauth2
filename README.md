@@ -31,7 +31,16 @@ It covers all 4 grant types:
 elm install truqu/elm-oauth2
 ```
 
-### Usage
+### Usage (Implicit Flow)
+
+##### 0/ A few imports assumed 
+
+```elm
+import OAuth
+import OAuth.Implicit
+import Url exposing (Url)
+import Browser.Navigation as Navigation exposing (Key)
+```
 
 ##### 1/ A model ready to receive a token and a message to convey the sign-in request
 
@@ -60,7 +69,7 @@ init { randomBytes } origin _ =
             }
     in
     case OAuth.Implicit.parseToken origin of
-        OAuth.Empty ->
+        OAuth.Implicit.Empty ->
             ( model, Cmd.none )
 
         OAuth.Implicit.Success { token, state } ->

@@ -1,6 +1,7 @@
 module OAuth.Refresh exposing
-    ( Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
-    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+    ( makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
+    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
+    , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     )
 
 {-| If the authorization server issued a refresh token to the client, the
@@ -9,20 +10,25 @@ client may make a refresh request to the token endpoint to obtain a new access t
 
 There's only one step in this process:
 
-    - The client authenticates itself directly using the previously obtained refresh token
+  - The client authenticates itself directly using the previously obtained refresh token
 
-After this step, the client owns a fresh `access_token` and possibly, a new `refresh_token`. Both
+After this step, the client owns a fresh access `Token` and possibly, a new refresh `Token`. Both
 can be used in subsequent requests.
 
 
 ## Authenticate
 
-@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
+@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
 
 
-## Json Decoders
+## JSON Decoders
 
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
+
+
+## JSON Decoders (advanced)
+
+@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
 
 -}
 
@@ -56,7 +62,7 @@ type alias Authentication =
     }
 
 
-{-| Describes a couple of client credentials used for Basic authentication
+{-| Describes a couple of client credentials used for 'Basic' authentication
 
       { clientId = "<my-client-id>"
       , secret = "<my-client-secret>"
@@ -132,7 +138,7 @@ type alias RequestParts a =
     }
 
 
-{-| Builds a the request components required to refresh a token
+{-| Builds the request components required to refresh a token
 
     let req : Http.Request TokenResponse
         req = makeTokenRequest toMsg reqParts |> Http.request
@@ -163,6 +169,15 @@ makeTokenRequest toMsg { credentials, scope, token, url } =
 
 {-| Json decoder for a positive response. You may provide a custom response decoder using other decoders
 from this module, or some of your own craft.
+
+    defaultAuthenticationSuccessDecoder : Decoder AuthenticationSuccess
+    defaultAuthenticationSuccessDecoder =
+        D.map4 AuthenticationSuccess
+            tokenDecoder
+            refreshTokenDecoder
+            expiresInDecoder
+            scopeDecoder
+
 -}
 defaultAuthenticationSuccessDecoder : Json.Decoder AuthenticationSuccess
 defaultAuthenticationSuccessDecoder =

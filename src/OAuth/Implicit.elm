@@ -1,7 +1,6 @@
 module OAuth.Implicit exposing
     ( makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
-    , parseTokenWith
-    , Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+    , parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
 
 {-| The implicit grant type is used to obtain access tokens (it does not
@@ -14,7 +13,7 @@ This is a 2-step process:
   - The client asks for an authorization and implicit authentication to the OAuth provider: the user is redirected.
   - The provider redirects the user back and the client parses the request query parameters from the url.
 
-After those steps, the client owns an `Token` that can be used to authorize any subsequent
+After those steps, the client owns a `Token` that can be used to authorize any subsequent
 request.
 
 
@@ -23,14 +22,9 @@ request.
 @docs makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError
 
 
-## Authorize (advanced)
+## Custom Parsers (advanced)
 
-@docs parseTokenWith
-
-
-## Query Parsers
-
-@docs Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+@docs parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
 
 -}
 
@@ -121,7 +115,7 @@ type alias AuthorizationSuccess =
 
   - Empty: means there were nothing (related to OAuth 2.0) to parse
   - Error: a successfully parsed OAuth 2.0 error
-  - Success: a successfully parsed the response
+  - Success: a successfully parsed token and response
 
 -}
 type AuthorizationResult
@@ -159,49 +153,6 @@ parseToken =
 
 This is especially useful when interacting with authorization servers that don't quite
 implement the OAuth2.0 specifications.
-
-For instance, Facebook has several quirks in its implementation:
-
-  - It doesn't return any 'token\_type'
-
-```
-    tokenParser : Query.Parser (Maybe OAuth.Token)
-    tokenParser =
-        Query.map (OAuth.makeToken (Just "Bearer"))
-            (Query.string "access_token")
-```
-
-  - It doesn't return any 'error', but returns instead an 'error\_code'
-
-```
-    errorParser : Query.Parser (Maybe OAuth.ErrorCode)
-    errorParser =
-        Query.map (Maybe.map OAuth.errorCodeFromString)
-          (Query.string "error_code")
-```
-
-  - It doesn't return an 'error\_description', but returns instead an 'error\_message'
-
-```
-    authorizationErrorParser : OAuth.ErrorCode -> Query.Parser OAuth.Implicit.AuthorizationError
-    authorizationErrorParser errorCode =
-        Query.map3 (OAuth.Implicit.AuthorizationError errorCode)
-            (Query.string "error_message")
-            (Query.string "error_uri")
-            (Query.string "state")
-```
-
-  - It returns the parameters as query parameters instead of a fragment, and even sometimes add a noise fragment
-
-```
-    patchUrl : Url -> Url
-    patchUrl url =
-        if url.fragment == Just "_=_" || url.fragment == Nothing then
-                { url | fragment = url.query  }
-
-            _ ->
-                url
-```
 
 -}
 parseTokenWith : Parsers -> Url -> AuthorizationResult

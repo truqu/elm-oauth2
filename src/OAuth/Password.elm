@@ -15,18 +15,23 @@ There's only one step in this process:
 
   - The client authenticates itself directly using the resource owner (user) credentials
 
-After this step, the client owns an `access_token` that can be used to authorize any subsequent
+After this step, the client owns a `Token` that can be used to authorize any subsequent
 request.
 
 
 ## Authenticate
 
-@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
+@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
 
 
-## Json Decoders
+## JSON Decoders
 
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
+
+
+## JSON Decoders (advanced)
+
+@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
 
 -}
 
@@ -63,7 +68,7 @@ type alias Authentication =
     }
 
 
-{-| Describes at least a `clientId` and if define, a complete set of credentials
+{-| Describes at least a `clientId` and if defined, a complete set of credentials
 with the `secret`. Optional but may be required by the authorization server you
 interact with to perform a 'Basic' authentication on top of the authentication request.
 
@@ -76,7 +81,7 @@ type alias Credentials =
     { clientId : String, secret : String }
 
 
-{-| The response obtained as a result of an authentication (implicit or not)
+{-| The response obtained as a result of an authentication:
 
   - token (_REQUIRED_):
     The access token issued by the authorization server.
@@ -141,7 +146,7 @@ type alias RequestParts a =
     }
 
 
-{-| Builds a the request components required to get a token from the resource owner (user) credentials
+{-| Builds the request components required to get a token in exchange of the resource owner (user) credentials
 
     let req : Http.Request TokenResponse
         req = makeTokenRequest toMsg authentication |> Http.request
@@ -173,6 +178,15 @@ makeTokenRequest toMsg { credentials, password, scope, url, username } =
 
 {-| Json decoder for a positive response. You may provide a custom response decoder using other decoders
 from this module, or some of your own craft.
+
+    defaultAuthenticationSuccessDecoder : Decoder AuthenticationSuccess
+    defaultAuthenticationSuccessDecoder =
+        D.map4 AuthenticationSuccess
+            tokenDecoder
+            refreshTokenDecoder
+            expiresInDecoder
+            scopeDecoder
+
 -}
 defaultAuthenticationSuccessDecoder : Json.Decoder AuthenticationSuccess
 defaultAuthenticationSuccessDecoder =

@@ -1,9 +1,9 @@
 module OAuth.AuthorizationCode exposing
-    ( Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError, parseCode, makeAuthorizationUrl
-    , parseCodeWith
-    , Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
-    , Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
-    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+    ( makeAuthorizationUrl, parseCode, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
+    , makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
+    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
+    , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+    , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
 
 {-| The authorization code grant type is used to obtain both access
@@ -19,33 +19,33 @@ This is a 3-step process:
   - The provider redirects the user back and the client parses the request query parameters from the url.
   - The client authenticate itself using the authorization code found in the previous step.
 
-After those steps, the client owns an `access_token` that can be used to authorize any subsequent
+After those steps, the client owns a `Token` that can be used to authorize any subsequent
 request.
 
 
 ## Authorize
 
-@docs Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError, parseCode, makeAuthorizationUrl
-
-
-## Authorize (advanced)
-
-@docs parseCodeWith
+@docs makeAuthorizationUrl, parseCode, Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError
 
 
 ## Authenticate
 
-@docs Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts, makeTokenRequest
+@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
 
 
-## Query Parsers
+## JSON Decoders
 
-@docs Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
 
 
-## Json Decoders
+## JSON Decoders (advanced)
 
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+
+
+## Query Parsers (advanced)
+
+@docs parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
 
 -}
 
@@ -128,7 +128,7 @@ type alias AuthorizationSuccess =
 
   - Empty: means there were nothing (related to OAuth 2.0) to parse
   - Error: a successfully parsed OAuth 2.0 error
-  - Success: a successfully parsed the response
+  - Success: a successfully parsed token and response
 
 -}
 type AuthorizationResult
@@ -158,11 +158,11 @@ parseCode =
 
 
 --
--- Authorize (Advanced)
+-- Query Parsers (advanced)
 --
 
 
-{-| See 'parseToken', but gives you the ability to provide your own custom parsers.
+{-| See `parseCode`, but gives you the ability to provide your own custom parsers.
 -}
 parseCodeWith : Parsers -> Url -> AuthorizationResult
 parseCodeWith { codeParser, errorParser, authorizationSuccessParser, authorizationErrorParser } url_ =
@@ -181,18 +181,12 @@ parseCodeWith { codeParser, errorParser, authorizationSuccessParser, authorizati
             Empty
 
 
-
---
--- Query Parsers
---
-
-
 {-| Parsers used in the 'parseCode' function.
 
-  - codeParser: Looks for an 'code' string
-  - errorParser: Looks for an 'error' to build a corresponding `ErrorCode`
-  - authorizationSuccessParser: Selected when the `tokenParser` succeeded to parse the remaining parts
-  - authorizationErrorParser: Selected when the `errorParser` succeeded to parse the remaining parts
+  - codeParser: looks for a 'code' string
+  - errorParser: looks for an 'error' to build a corresponding `ErrorCode`
+  - authorizationSuccessParser: selected when the `tokenParser` succeeded to parse the remaining parts
+  - authorizationErrorParser: selected when the `errorParser` succeeded to parse the remaining parts
 
 -}
 type alias Parsers =
@@ -395,6 +389,15 @@ makeTokenRequest toMsg { credentials, code, url, redirectUri } =
 
 {-| Json decoder for a positive response. You may provide a custom response decoder using other decoders
 from this module, or some of your own craft.
+
+    defaultAuthenticationSuccessDecoder : Decoder AuthenticationSuccess
+    defaultAuthenticationSuccessDecoder =
+        D.map4 AuthenticationSuccess
+            tokenDecoder
+            refreshTokenDecoder
+            expiresInDecoder
+            scopeDecoder
+
 -}
 defaultAuthenticationSuccessDecoder : Json.Decoder AuthenticationSuccess
 defaultAuthenticationSuccessDecoder =
