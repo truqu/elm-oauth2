@@ -23,8 +23,7 @@
         "elm/json": "1.1.2 <= v < 2.0.0",
         "elm/url": "1.0.0 <= v < 2.0.0",
         "folkertdev/elm-sha2": "1.0.0 <= v < 2.0.0",
-        "ivadzy/bbase64": "1.1.1 <= v < 2.0.0",
-        "truqu/elm-base64": "2.0.4 <= v < 3.0.0"
+        "ivadzy/bbase64": "1.1.1 <= v < 2.0.0"
     },
     "test-dependencies": {}
 }

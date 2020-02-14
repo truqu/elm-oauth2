@@ -1,6 +1,6 @@
 module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
 
-import Base64
+import Base64.Encode as Base64
 import Http as Http
 import Json.Decode as Json
 import OAuth exposing (..)
@@ -251,7 +251,7 @@ makeRequest toMsg url headers body =
 makeHeaders : Maybe { clientId : String, secret : String } -> List Http.Header
 makeHeaders credentials =
     credentials
-        |> Maybe.map (\{ clientId, secret } -> Base64.encode (clientId ++ ":" ++ secret))
+        |> Maybe.map (\{ clientId, secret } -> Base64.encode <| Base64.string <| (clientId ++ ":" ++ secret))
         |> Maybe.map (\s -> [ Http.header "Authorization" ("Basic " ++ s) ])
         |> Maybe.withDefault []
 
