@@ -213,7 +213,7 @@ urlAddMaybe param ms qs =
 
 
 makeAuthorizationUrl : ResponseType -> Authorization -> Url
-makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state } =
+makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state, codeChallenge } =
     let
         query =
             [ Builder.string "client_id" clientId
@@ -222,6 +222,9 @@ makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state } =
             ]
                 |> urlAddList "scope" scope
                 |> urlAddMaybe "state" state
+                |> urlAddMaybe "code_challenge" codeChallenge
+                |> urlAddMaybe "code_challenge_method"
+                    (Maybe.map (always "S256") codeChallenge)
                 |> Builder.toQuery
                 |> String.dropLeft 1
     in
@@ -346,6 +349,7 @@ type alias Authorization =
     , redirectUri : Url
     , scope : List String
     , state : Maybe String
+    , codeChallenge : Maybe String
     }
 
 

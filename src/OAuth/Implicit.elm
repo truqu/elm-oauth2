@@ -128,8 +128,16 @@ type AuthorizationResult
 authorization flow.
 -}
 makeAuthorizationUrl : Authorization -> Url
-makeAuthorizationUrl =
-    Internal.makeAuthorizationUrl Internal.Token
+makeAuthorizationUrl { clientId, url, redirectUri, scope, state } =
+    Internal.makeAuthorizationUrl
+        Internal.Token
+        { clientId = clientId
+        , url = url
+        , redirectUri = redirectUri
+        , scope = scope
+        , state = state
+        , codeChallenge = Nothing
+        }
 
 
 {-| Parses the location looking for parameters in the 'fragment' set by the
