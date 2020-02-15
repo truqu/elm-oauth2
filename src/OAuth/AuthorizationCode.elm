@@ -1,5 +1,5 @@
 module OAuth.AuthorizationCode exposing
-    ( makeAuthorizationUrl, parseCode, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
+    ( makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
     , makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
     , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
@@ -54,7 +54,7 @@ request.
 
 ## Authorize
 
-@docs makeAuthorizationUrl, parseCode, Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError
+@docs makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult, AuthorizationSuccess, AuthorizationError
 
 
 ## Authenticate
@@ -169,9 +169,15 @@ type alias AuthorizationError =
 
 -}
 type alias AuthorizationSuccess =
-    { code : String
+    { code : AuthorizationCode
     , state : Maybe String
     }
+
+
+{-| A simple type alias to ease readability of type signatures
+-}
+type alias AuthorizationCode =
+    String
 
 
 {-| Describes errors coming from attempting to parse a url after an OAuth redirection

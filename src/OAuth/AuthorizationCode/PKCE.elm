@@ -5,6 +5,7 @@ module OAuth.AuthorizationCode.PKCE exposing
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
     , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+    , AuthorizationCode
     )
 
 {-| OAuth 2.0 public clients utilizing the Authorization Code Grant are
@@ -423,6 +424,12 @@ type alias AuthenticationSuccess =
     , expiresIn : Maybe Int
     , scope : List String
     }
+
+
+{-| A simple type alias to ease readability of type signatures
+-}
+type alias AuthorizationCode =
+    String
 
 
 {-| Describes an OAuth error as a result of a request failure
