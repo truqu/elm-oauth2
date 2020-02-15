@@ -42,23 +42,25 @@ import Url.Builder as Builder
 
 {-| Request configuration for a Refresh authentication
 
-    let authentication =
-          -- Optional, unless required by the resource provider
-          { credentials = Nothing
-          -- Scopes requested, can be empty
-          , scope = ["read:whatever"]
-          -- A refresh token previously delivered
-          , token = OAuth.Bearer "abcdef1234567890"
-          -- Token endpoint of the resource provider
-          , url = "<token-endpoint>"
-          }
+  - credentials (_RECOMMENDED_):
+    Credentials needed for `Basic` authentication, if needed by the
+    authorization server.
+
+  - url (_REQUIRED_):
+    The token endpoint to contact the authorization server.
+
+  - scope (_OPTIONAL_):
+    The scope of the access request.
+
+  - token (_REQUIRED_):
+    Token endpoint of the resource provider
 
 -}
 type alias Authentication =
     { credentials : Maybe Credentials
-    , token : Token
-    , scope : List String
     , url : Url
+    , scope : List String
+    , token : Token
     }
 
 

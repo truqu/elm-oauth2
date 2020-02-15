@@ -45,26 +45,29 @@ import Url.Builder as Builder
 
 {-| Request configuration for a Password authentication
 
-    let authentication =
-          -- Optional, unless required by the resource provider
-          { credentials = credentials
-          -- Resource owner's password
-          , password = "<user-password>"
-          -- Scopes requested, can be empty
-          , scope = ["read:whatever"]
-          -- Token endpoint of the resource provider
-          , url = "<token-endpoint>"
-          -- Resource owner's username
-          , username = "<user-username>"
-          }
+  - credentials (_RECOMMENDED_):
+    Credentials needed for `Basic` authentication, if needed by the
+    authorization server.
+
+  - url (_REQUIRED_):
+    The token endpoint to contact the authorization server.
+
+  - scope (_OPTIONAL_):
+    The scope of the access request.
+
+  - password (_REQUIRED_):
+    Resource owner's password
+
+  - username (_REQUIRED_):
+    Resource owner's username
 
 -}
 type alias Authentication =
     { credentials : Maybe Credentials
-    , password : String
-    , scope : List String
     , url : Url
+    , scope : List String
     , username : String
+    , password : String
     }
 
 

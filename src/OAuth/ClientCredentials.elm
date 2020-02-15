@@ -50,20 +50,20 @@ import Url.Builder as Builder
 
 {-| Request configuration for a ClientCredentials authentication
 
-    let authentication =
-          -- Credentials needed for Basic authentication
-          { credentials =
-          -- Token endpoint of the resource provider
-          , url = "<token-endpoint>"
-          -- Scopes requested, can be empty
-          , scope = ["read:whatever"]
-          }
+  - credentials (_REQUIRED_):
+    Credentials needed for `Basic` authentication.
+
+  - url (_REQUIRED_):
+    The token endpoint to contact the authorization server.
+
+  - scope (_OPTIONAL_):
+    The scope of the access request.
 
 -}
 type alias Authentication =
     { credentials : Credentials
-    , scope : List String
     , url : Url
+    , scope : List String
     }
 
 

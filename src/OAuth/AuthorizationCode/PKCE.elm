@@ -11,26 +11,24 @@ module OAuth.AuthorizationCode.PKCE exposing
 susceptible to the authorization code interception attack. A possible
 mitigation against the threat is to use a technique called Proof Key for
 Code Exchange (PKCE, pronounced "pixy") when supported by the target
-authorization server.
+authorization server. See also [RFC 7636](https://tools.ietf.org/html/rfc7636).
 
-                                                 +-------------------+
-                                                 |   Authz Server    |
-       +--------+                                | +---------------+ |
-       |        |--(A)- Authorization Request ---->|               | |
-       |        |       + t(code_verifier), t_m  | | Authorization | |
-       |        |                                | |    Endpoint   | |
-       |        |<-(B)---- Authorization Code -----|               | |
-       |  Elm   |                                | +---------------+ |
-       |  App   |                                |                   |
-       |        |                                | +---------------+ |
-       |        |--(C)-- Access Token Request ---->|               | |
-       |        |          + code_verifier       | |    Token      | |
-       |        |                                | |   Endpoint    | |
-       |        |<-(D)------ Access Token ---------|               | |
-       +--------+                                | +---------------+ |
-                                                 +-------------------+
-
-                         Abstract Protocol Flow
+                                         +-----------------+
+                                         |  Auth   Server  |
+        +-------+                        | +-------------+ |
+        |       |--(1)- Auth Request --->| |             | |
+        |       |    + code_challenge    | |    Auth     | |
+        |       |                        | |   Endpoint  | |
+        |       |<-(2)-- Auth Code ------| |             | |
+        |  Elm  |                        | +-------------+ |
+        |  App  |                        |                 |
+        |       |                        | +-------------+ |
+        |       |--(3)- Token Request -->| |             | |
+        |       |      + code_verifier   | |   Token     | |
+        |       |                        | |  Endpoint   | |
+        |       |<-(4)- Access Token --->| |             | |
+        +-------+                        | +-------------+ |
+                                         +-----------------+
 
 See also the Authorization Code flow for details about the basic version
 of this flow.
@@ -86,12 +84,24 @@ import Url.Parser.Query as Query
 --
 
 
-type CodeChallenge
-    = CodeChallenge Base64.Encoder
+{-| An opaque type representing a code verifier. Typically constructed from a high quality entropy.
 
+    case codeVerifierFromBytes entropy of
+      Nothing -> {- ...-}
+      Just codeVerifier -> {- ... -}
 
+-}
 type CodeVerifier
     = CodeVerifier Base64.Encoder
+
+
+{-| An opaque type representing a code challenge. Typically constructed from a `CodeVerifier`.
+
+    let codeChallenge = mkCodeChallenge codeVerifier
+
+-}
+type CodeChallenge
+    = CodeChallenge Base64.Encoder
 
 
 {-| Construct a code verifier from a byte sequence generated from a **high quality randomness** source (i.e. cryptographic).
@@ -360,22 +370,23 @@ defaultAuthorizationErrorParser =
 
 {-| Request configuration for an AuthorizationCode authentication
 
-  - credentials:
+  - credentials (_REQUIRED_):
     Only the clientId is required. Specify a secret if a Basic OAuth
     is required by the resource provider.
 
-  - code:
+  - code (_REQUIRED_):
     Authorization code from the authorization result
 
-  - codeVerifier:
+  - codeVerifier (_REQUIRED_):
     The code verifier proving you are the rightful recipient of the
     access token.
 
-  - url:
+  - url (_REQUIRED_):
     Token endpoint of the resource provider
 
-  - redirectUri:
-    Redirect Uri to your webserver.
+  - redirectUri (_REQUIRED_):
+    Redirect Uri to your webserver used in the authorization step, provided
+    here for verification.
 
 -}
 type alias Authentication =

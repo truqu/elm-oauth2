@@ -13,11 +13,40 @@ interacting with the resource owner's user-agent (typically a web
 browser) and capable of receiving incoming requests (via redirection)
 from the authorization server.
 
-This is a 3-step process:
+       +---------+                                +--------+
+       |         |---(A)- Auth Redirection ------>|        |
+       |         |                                |  Auth  |
+       | Browser |                                | Server |
+       |         |                                |        |
+       |         |<--(B)- Redirection Callback ---|        |
+       +---------+          (w/ Auth Code)        +--------+
+         ^     |                                    ^    |
+         |     |                                    |    |
+        (A)   (B)                                   |    |
+         |     |                                    |    |
+         |     v                                    |    |
+       +---------+                                  |    |
+       |         |----(C)---- Auth Code ------------+    |
+       | Elm App |                                       |
+       |         |                                       |
+       |         |<---(D)------ Access Token ------------+
+       +---------+       (w/ Optional Refresh Token)
 
-  - The client asks for an authorization to the OAuth provider: the user is redirected.
-  - The provider redirects the user back and the client parses the request query parameters from the url.
-  - The client authenticate itself using the authorization code found in the previous step.
+  - (A) The client initiates the flow by directing the resource owner's
+    user-agent to the authorization endpoint.
+
+  - (B) Assuming the resource owner grants access, the authorization
+    server redirects the user-agent back to the client including an
+    authorization code and any local state provided by the client
+    earlier.
+
+  - (C) The client requests an access token from the authorization
+    server's token endpoint by including the authorization code
+    received in the previous step.
+
+  - (D) The authorization server authenticates the client and validates
+    the authorization code. If valid, the authorization server responds
+    back with an access token and, optionally, a refresh token.
 
 After those steps, the client owns a `Token` that can be used to authorize any subsequent
 request.
@@ -66,6 +95,27 @@ import Url.Parser.Query as Query
 
 
 {-| Request configuration for an authorization (Authorization Code & Implicit flows)
+
+  - clientId (_REQUIRED_):
+    The client identifier issues by the authorization server via an off-band mechanism.
+
+  - url (_REQUIRED_):
+    The authorization endpoint to contact the authorization server.
+
+  - redirectUri (_OPTIONAL_):
+    After completing its interaction with the resource owner, the authorization
+    server directs the resource owner's user-agent back to the client via this
+    URL. May be already defined on the authorization server itself.
+
+  - scope (_OPTIONAL_):
+    The scope of the access request.
+
+  - state (_RECOMMENDED_):
+    An opaque value used by the client to maintain state between the request
+    and callback. The authorization server includes this value when redirecting
+    the user-agent back to the client. The parameter SHOULD be used for preventing
+    cross-site request forgery.
+
 -}
 type alias Authorization =
     { clientId : String
@@ -253,21 +303,19 @@ defaultAuthorizationErrorParser =
 
 {-| Request configuration for an AuthorizationCode authentication
 
-    let authentication =
-          { credentials =
-              -- Only the clientId is required. Specify a secret
-              -- if a Basic OAuth is required by the resource
-              -- provider
-              { clientId = "<my-client-id>"
-              , secret = Nothing
-              }
-          -- Authorization code from the authorization result
-          , code = "<authorization-code>"
-          -- Token endpoint of the resource provider
-          , url = "<token-endpoint>"
-          -- Redirect Uri to your webserver
-          , redirectUri = "<my-web-server>"
-          }
+  - credentials (_REQUIRED_):
+    Only the clientId is required. Specify a secret if a Basic OAuth
+    is required by the resource provider.
+
+  - code (_REQUIRED_):
+    Authorization code from the authorization result
+
+  - url (_REQUIRED_):
+    Token endpoint of the resource provider
+
+  - redirectUri (_REQUIRED_):
+    Redirect Uri to your webserver used in the authorization step, provided
+    here for verification.
 
 -}
 type alias Authentication =
