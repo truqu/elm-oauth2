@@ -38,7 +38,7 @@ Throughout the library, you'll find terms referring to OAuth well-defined roles:
 </details>
 
 <details>
-  <summary>Authentication requests in the _Authorization Flow_ don't go through </summary>
+  <summary>Authentication requests in the <i>Authorization Flow</i> don't go through </summary>
 
 Most authorization servers don't enable CORS on the authentication endpoints. For this reason,
 it's likely that the preflight _OPTIONS_ requests sent by the browser return an invalid
@@ -55,6 +55,8 @@ permissions, the case of user-facing client-side applications is only one of the
 authorization flows are therefore not necessarily adapted to these cases. Usually, a client-side
 application will prefer the _Implicit Flow_ over the others.
 </details>
+
+---
 
 > Still having an issue?
 >
