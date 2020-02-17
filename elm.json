@@ -3,7 +3,7 @@
     "name": "truqu/elm-oauth2",
     "summary": "OAuth 2.0 client-side utils",
     "license": "MIT",
-    "version": "6.0.0",
+    "version": "7.0.0",
     "exposed-modules": [
         "OAuth",
         "OAuth.AuthorizationCode",
