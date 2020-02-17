@@ -2,21 +2,21 @@
 
 function deploy_examples () {
   version=$1
-  examples=$2
 
-  git checkout "gh-pages" || exit 1
-  git merge --squash -X theirs -
-  git reset *.html
-  git commit -m "tmp"
+  git branch -D gh-pages-$version
+  git checkout --orphan gh-pages-$version
+  git reset
 
-  cd examples
-  for d in $examples ; do
-    elm make --optimize --output $d/bundle.min.js "$d/Main.elm"
-    git add -f $d/bundle.min.js
-    git add -f $d/index.html
+  cd examples/providers
+  for d in $(ls -d **/** | grep -v README); do
+    mkdir -p ../../$d
+    cp -r ../index.html ../assets $d/dist ../../$d
+    git add -f ../../$d/assets
+    git add -f ../../$d/dist/app.min.js
+    git add -f ../../$d/index.html
   done
-  git commit -m "release version $version"
-  git rebase  -X ours HEAD~ --onto HEAD~2
-  git push origin HEAD
-  git checkout -
+  cd -
+  git commit -m "$version"
+  git branch -M gh-pages && git push origin -f HEAD
+  git checkout -f master
 }

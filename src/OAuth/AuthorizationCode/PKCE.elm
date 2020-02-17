@@ -1,55 +1,42 @@
-module OAuth.AuthorizationCode exposing
-    ( makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
+module OAuth.AuthorizationCode.PKCE exposing
+    ( CodeVerifier, CodeChallenge, codeVerifierFromBytes, codeVerifierToString, mkCodeChallenge, codeChallengeToString
+    , makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
     , makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
     , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
 
-{-| The authorization code grant type is used to obtain both access
-tokens and refresh tokens and is optimized for confidential clients.
-Since this is a redirection-based flow, the client must be capable of
-interacting with the resource owner's user-agent (typically a web
-browser) and capable of receiving incoming requests (via redirection)
-from the authorization server.
+{-| OAuth 2.0 public clients utilizing the Authorization Code Grant are
+susceptible to the authorization code interception attack. A possible
+mitigation against the threat is to use a technique called Proof Key for
+Code Exchange (PKCE, pronounced "pixy") when supported by the target
+authorization server. See also [RFC 7636](https://tools.ietf.org/html/rfc7636).
 
-       +---------+                                +--------+
-       |         |---(A)- Auth Redirection ------>|        |
-       |         |                                |  Auth  |
-       | Browser |                                | Server |
-       |         |                                |        |
-       |         |<--(B)- Redirection Callback ---|        |
-       +---------+          (w/ Auth Code)        +--------+
-         ^     |                                    ^    |
-         |     |                                    |    |
-        (A)   (B)                                   |    |
-         |     |                                    |    |
-         |     v                                    |    |
-       +---------+                                  |    |
-       |         |----(C)---- Auth Code ------------+    |
-       | Elm App |                                       |
-       |         |                                       |
-       |         |<---(D)------ Access Token ------------+
-       +---------+       (w/ Optional Refresh Token)
+                                         +-----------------+
+                                         |  Auth   Server  |
+        +-------+                        | +-------------+ |
+        |       |--(1)- Auth Request --->| |             | |
+        |       |    + code_challenge    | |    Auth     | |
+        |       |                        | |   Endpoint  | |
+        |       |<-(2)-- Auth Code ------| |             | |
+        |  Elm  |                        | +-------------+ |
+        |  App  |                        |                 |
+        |       |                        | +-------------+ |
+        |       |--(3)- Token Request -->| |             | |
+        |       |      + code_verifier   | |   Token     | |
+        |       |                        | |  Endpoint   | |
+        |       |<-(4)- Access Token --->| |             | |
+        +-------+                        | +-------------+ |
+                                         +-----------------+
 
-  - (A) The client initiates the flow by directing the resource owner's
-    user-agent to the authorization endpoint.
+See also the Authorization Code flow for details about the basic version
+of this flow.
 
-  - (B) Assuming the resource owner grants access, the authorization
-    server redirects the user-agent back to the client including an
-    authorization code and any local state provided by the client
-    earlier.
 
-  - (C) The client requests an access token from the authorization
-    server's token endpoint by including the authorization code
-    received in the previous step.
+## Code Verifier / Challenge
 
-  - (D) The authorization server authenticates the client and validates
-    the authorization code. If valid, the authorization server responds
-    back with an access token and, optionally, a refresh token.
-
-After those steps, the client owns a `Token` that can be used to authorize any subsequent
-request.
+@docs CodeVerifier, CodeChallenge, codeVerifierFromBytes, codeVerifierToString, mkCodeChallenge, codeChallengeToString
 
 
 ## Authorize
@@ -78,14 +65,89 @@ request.
 
 -}
 
+import Base64.Encode as Base64
+import Bytes exposing (Bytes)
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
 import OAuth exposing (ErrorCode, Token, errorCodeFromString)
+import SHA256 as SHA256
 import Url exposing (Url)
 import Url.Builder as Builder
 import Url.Parser as Url exposing ((<?>))
 import Url.Parser.Query as Query
+
+
+
+--
+-- Code Challenge / Code Verifier
+--
+
+
+{-| An opaque type representing a code verifier. Typically constructed from a high quality entropy.
+
+    case codeVerifierFromBytes entropy of
+      Nothing -> {- ...-}
+      Just codeVerifier -> {- ... -}
+
+-}
+type CodeVerifier
+    = CodeVerifier Base64.Encoder
+
+
+{-| An opaque type representing a code challenge. Typically constructed from a `CodeVerifier`.
+
+    let codeChallenge = mkCodeChallenge codeVerifier
+
+-}
+type CodeChallenge
+    = CodeChallenge Base64.Encoder
+
+
+{-| Construct a code verifier from a byte sequence generated from a **high quality randomness** source (i.e. cryptographic).
+
+Ideally, the byte sequence _should be_ 32 or 64 bytes, and it _must be_ at least 32 bytes and at most 90 bytes.
+
+-}
+codeVerifierFromBytes : Bytes -> Maybe CodeVerifier
+codeVerifierFromBytes bytes =
+    if Bytes.width bytes < 32 || Bytes.width bytes > 90 then
+        Nothing
+
+    else
+        bytes |> Base64.bytes |> CodeVerifier |> Just
+
+
+{-| Convert a code verifier to its string representation.
+-}
+codeVerifierToString : CodeVerifier -> String
+codeVerifierToString (CodeVerifier str) =
+    base64UrlEncode str
+
+
+{-| Construct a `CodeChallenge` to send to the authorization server. Upon receiving the authorization code, the client can then
+the associated `CodeVerifier` to prove it is the rightful owner of the authorization code.
+-}
+mkCodeChallenge : CodeVerifier -> CodeChallenge
+mkCodeChallenge =
+    codeVerifierToString >> SHA256.fromString >> SHA256.toBytes >> Base64.bytes >> CodeChallenge
+
+
+{-| Convert a code challenge to its string representation.
+-}
+codeChallengeToString : CodeChallenge -> String
+codeChallengeToString (CodeChallenge str) =
+    base64UrlEncode str
+
+
+{-| Internal function implementing Base64-URL encoding (i.e. base64 without padding and some unsuitable characters replaced)
+-}
+base64UrlEncode : Base64.Encoder -> String
+base64UrlEncode =
+    Base64.encode
+        >> String.replace "=" ""
+        >> String.replace "+" "-"
+        >> String.replace "/" "_"
 
 
 
@@ -116,6 +178,10 @@ import Url.Parser.Query as Query
     the user-agent back to the client. The parameter SHOULD be used for preventing
     cross-site request forgery.
 
+  - codeChallenge (_REQUIRED_):
+    A challenge derived from the code verifier that is sent in the
+    authorization request, to be verified against later.
+
 -}
 type alias Authorization =
     { clientId : String
@@ -123,6 +189,7 @@ type alias Authorization =
     , redirectUri : Url
     , scope : List String
     , state : Maybe String
+    , codeChallenge : CodeChallenge
     }
 
 
@@ -169,15 +236,9 @@ type alias AuthorizationError =
 
 -}
 type alias AuthorizationSuccess =
-    { code : AuthorizationCode
+    { code : String
     , state : Maybe String
     }
-
-
-{-| A simple type alias to ease readability of type signatures
--}
-type alias AuthorizationCode =
-    String
 
 
 {-| Describes errors coming from attempting to parse a url after an OAuth redirection
@@ -197,7 +258,7 @@ type AuthorizationResult
 authorization flow.
 -}
 makeAuthorizationUrl : Authorization -> Url
-makeAuthorizationUrl { clientId, url, redirectUri, scope, state } =
+makeAuthorizationUrl { clientId, url, redirectUri, scope, state, codeChallenge } =
     Internal.makeAuthorizationUrl
         Internal.Code
         { clientId = clientId
@@ -205,14 +266,14 @@ makeAuthorizationUrl { clientId, url, redirectUri, scope, state } =
         , redirectUri = redirectUri
         , scope = scope
         , state = state
-        , codeChallenge = Nothing
+        , codeChallenge = Just <| codeChallengeToString codeChallenge
         }
 
 
 {-| Parse the location looking for a parameters set by the resource provider server after
 redirecting the resource owner (user).
 
-Returns `AuthorizationResult Empty` when there's nothing
+Returns `AuthorizationResult Empty` when there's nothing.
 
 -}
 parseCode : Url -> AuthorizationResult
@@ -316,6 +377,10 @@ defaultAuthorizationErrorParser =
   - code (_REQUIRED_):
     Authorization code from the authorization result
 
+  - codeVerifier (_REQUIRED_):
+    The code verifier proving you are the rightful recipient of the
+    access token.
+
   - url (_REQUIRED_):
     Token endpoint of the resource provider
 
@@ -327,6 +392,7 @@ defaultAuthorizationErrorParser =
 type alias Authentication =
     { credentials : Credentials
     , code : String
+    , codeVerifier : CodeVerifier
     , redirectUri : Url
     , url : Url
     }
@@ -357,6 +423,12 @@ type alias AuthenticationSuccess =
     , expiresIn : Maybe Int
     , scope : List String
     }
+
+
+{-| A simple type alias to ease readability of type signatures
+-}
+type alias AuthorizationCode =
+    String
 
 
 {-| Describes an OAuth error as a result of a request failure
@@ -420,13 +492,14 @@ type alias Credentials =
 
 -}
 makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
-makeTokenRequest toMsg { credentials, code, url, redirectUri } =
+makeTokenRequest toMsg { credentials, code, codeVerifier, url, redirectUri } =
     let
         body =
             [ Builder.string "grant_type" "authorization_code"
             , Builder.string "client_id" credentials.clientId
             , Builder.string "redirect_uri" (makeRedirectUri redirectUri)
             , Builder.string "code" code
+            , Builder.string "code_verifier" (codeVerifierToString codeVerifier)
             ]
                 |> Builder.toQuery
                 |> String.dropLeft 1

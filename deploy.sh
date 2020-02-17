@@ -5,9 +5,6 @@ function untag () {
   git push origin --delete $1
 }
 
-## Declare examples here
-examples=$(cd examples && find . -type d ! -path '*elm-stuff*' ! -path '*common*' ! -name '.')
-
 ## Verify nothing is unstaged or untracked
 status=$(git status -s)
 if [ -n "$status" ]; then
@@ -18,13 +15,13 @@ fi
 
 ## Verify code compiles
 echo "compiling library" && elm make || exit 1
-cd examples
-for d in $examples ; do
-  echo "compiling $d" && elm make --optimize "$d/Main.elm" || exit 1
+for d in $(ls -d examples/providers/**/** | grep -v README) ; do
+  cd $d
+  mkdir -p dist
+  echo "compiling $d" && elm make --optimize "Main.elm" --output="dist/app.min.js" || exit 1
+  cd -
 done
-cd -
 rm -f index.html
-
 
 ## Get version number
 version=$(cat elm.json | grep '"version"' | sed 's/\([^0-9]*\)\([0-9]\.[0-9]\.[0-9]\)\(.*\)/\2/')
@@ -35,7 +32,6 @@ else
   echo "VERSION: $version"
 fi
 
-
 ## Create tag and publish
 trap 'untag $version' 1
 git tag -d $version 1>/dev/null 2>&1
@@ -45,4 +41,4 @@ elm publish || exit 1
 
 ## Deploy examples
 source ./deploy_examples.sh
-deploy_examples $version $examples
+deploy_examples $version

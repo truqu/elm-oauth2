@@ -13,6 +13,9 @@ you'll only need tu use one of the additional modules:
     and refresh tokens via a redirection-based flow and is optimized for confidential clients
     [4.1](https://tools.ietf.org/html/rfc6749#section-4.1).
 
+  - OAuth.AuthorizationCode.PKCE: An extension of the original OAuth 2.0 specification to mitigate
+    authorization code interception attacks through the use of Proof Key for Code Exchange (PKCE).
+
   - OAuth.Implicit: The implicit grant type is used to obtain access tokens (it does not support the
     issuance of refresh tokens) and is optimized for public clients known to operate a particular
     redirection URI [4.2](https://tools.ietf.org/html/rfc6749#section-4.2).

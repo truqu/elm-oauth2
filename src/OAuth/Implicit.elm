@@ -8,10 +8,24 @@ support the issuance of refresh tokens) and is optimized for public clients know
 particular redirection URI. These clients are typically implemented in a browser using a
 scripting language such as JavaScript.
 
-This is a 2-step process:
-
-  - The client asks for an authorization and implicit authentication to the OAuth provider: the user is redirected.
-  - The provider redirects the user back and the client parses the request query parameters from the url.
+       +---------+                                +--------+
+       |         |---(A)- Auth Redirection ------>|        |
+       |         |                                |  Auth  |
+       | Browser |                                | Server |
+       |         |                                |        |
+       |         |<--(B)- Redirection Callback ---|        |
+       +---------+        w/ Access Token         +--------+
+         ^     |
+         |     |
+        (A)   (B)
+         |     |
+         |     v
+       +---------+
+       |         |
+       | Elm App |
+       |         |
+       |         |
+       +---------+
 
 After those steps, the client owns a `Token` that can be used to authorize any subsequent
 request.
@@ -42,6 +56,27 @@ import Url.Parser.Query as Query
 
 
 {-| Request configuration for an authorization
+
+  - clientId (_REQUIRED_):
+    The client identifier issues by the authorization server via an off-band mechanism.
+
+  - url (_REQUIRED_):
+    The authorization endpoint to contact the authorization server.
+
+  - redirectUri (_OPTIONAL_):
+    After completing its interaction with the resource owner, the authorization
+    server directs the resource owner's user-agent back to the client via this
+    URL. May be already defined on the authorization server itself.
+
+  - scope (_OPTIONAL_):
+    The scope of the access request.
+
+  - state (_RECOMMENDED_):
+    An opaque value used by the client to maintain state between the request
+    and callback. The authorization server includes this value when redirecting
+    the user-agent back to the client. The parameter SHOULD be used for preventing
+    cross-site request forgery.
+
 -}
 type alias Authorization =
     { clientId : String
@@ -128,8 +163,16 @@ type AuthorizationResult
 authorization flow.
 -}
 makeAuthorizationUrl : Authorization -> Url
-makeAuthorizationUrl =
-    Internal.makeAuthorizationUrl Internal.Token
+makeAuthorizationUrl { clientId, url, redirectUri, scope, state } =
+    Internal.makeAuthorizationUrl
+        Internal.Token
+        { clientId = clientId
+        , url = url
+        , redirectUri = redirectUri
+        , scope = scope
+        , state = state
+        , codeChallenge = Nothing
+        }
 
 
 {-| Parses the location looking for parameters in the 'fragment' set by the
