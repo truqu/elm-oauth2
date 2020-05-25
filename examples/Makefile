@@ -6,7 +6,11 @@ OUTPUT=../../../$(DIST)/app.min.js
 .PHONY: help start
 
 help:
-	@echo -n "Usage: make <PROVIDER>/<FLOW>\n\nExamples:\n    make auth0/pkce\n    make google/authorization-code\n    make facebook/implicit"
+	@echo -n "Usage: make <PROVIDER>/<FLOW>"
+	@echo -n "\n\nAvailable targets:\n"
+	$(eval DIRS := $(shell find providers -maxdepth 2 -mindepth 2 -type d))
+	@echo -n $(foreach EL,$(DIRS),$(shell echo "$(EL)" | cut -c 11-)) | tr " " "\n" | sed "s/^/    /"
+	@echo -n "\n\nExamples:\n    make facebook/implicit\n    make auth0/pkce"
 
 start:
 	python -m SimpleHTTPServer
