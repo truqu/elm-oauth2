@@ -25,5 +25,7 @@
         "folkertdev/elm-sha2": "1.0.0 <= v < 2.0.0",
         "ivadzy/bbase64": "1.1.1 <= v < 2.0.0"
     },
-    "test-dependencies": {}
+    "test-dependencies": {
+        "elm-explorations/test": "1.2.2 <= v < 2.0.0"
+    }
 }
