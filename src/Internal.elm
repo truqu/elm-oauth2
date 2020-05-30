@@ -179,7 +179,16 @@ errorUriParser =
 
 spaceSeparatedListParser : String -> Query.Parser (List String)
 spaceSeparatedListParser param =
-    Query.map (\s -> Maybe.withDefault "" s |> String.split " ") (Query.string param)
+    Query.map
+        (\s ->
+            case s of
+                Nothing ->
+                    []
+
+                Just str ->
+                    String.split " " str
+        )
+        (Query.string param)
 
 
 urlAddList : String -> List String -> List QueryParameter -> List QueryParameter
