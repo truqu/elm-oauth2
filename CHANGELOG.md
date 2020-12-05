@@ -1,3 +1,7 @@
+## v7.0.1 (2020-12-05)
+
+- Updated dependency `ivadzy/bbase64@1.1.1` renamed as `chelovek0v/bbase64@1.0.1`
+
 ## v7.0.0 (2020-02-17)
 
 #### Diff
