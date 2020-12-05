@@ -1,4 +1,4 @@
-Elm OAuth 2 [![](https://img.shields.io/badge/package.elm--lang.org-7.0.0-60b5cc.svg?style=flat-square)](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest) 
+Elm OAuth 2 [![](https://img.shields.io/badge/package.elm--lang.org-7.0.1-60b5cc.svg?style=flat-square)](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest) 
 =====
 
 This package offers some utilities to implement a client-side [OAuth 2](https://tools.ietf.org/html/rfc6749) authorization in Elm. 
