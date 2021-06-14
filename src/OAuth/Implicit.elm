@@ -1,6 +1,7 @@
 module OAuth.Implicit exposing
     ( makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
     , parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+    , customAuthorizationSuccessParser
     )
 
 {-| The implicit grant type is used to obtain access tokens (it does not
@@ -137,13 +138,21 @@ type alias AuthorizationError =
     The exact value received from the client
 
 -}
-type alias AuthorizationSuccess =
+type AuthorizationSuccess extraFields
+    = AuthorizationSuccess DefaultFields extraFields
+
+
+type alias DefaultFields =
     { token : Token
     , refreshToken : Maybe Token
     , expiresIn : Maybe Int
     , scope : List String
     , state : Maybe String
     }
+
+
+type Default
+    = Default
 
 
 {-| Describes errors coming from attempting to parse a url after an OAuth redirection
@@ -153,10 +162,10 @@ type alias AuthorizationSuccess =
   - Success: a successfully parsed token and response
 
 -}
-type AuthorizationResult
+type AuthorizationResult extraFields
     = Empty
     | Error AuthorizationError
-    | Success AuthorizationSuccess
+    | Success (AuthorizationSuccess extraFields)
 
 
 {-| Redirects the resource owner (user) to the resource provider server using the specified
@@ -181,7 +190,7 @@ authorization server after redirecting the resource owner (user).
 Returns `ParseResult Empty` when there's nothing or an invalid Url is passed
 
 -}
-parseToken : Url -> AuthorizationResult
+parseToken : Url -> AuthorizationResult Default
 parseToken =
     parseTokenWith defaultParsers
 
@@ -198,7 +207,7 @@ This is especially useful when interacting with authorization servers that don't
 implement the OAuth2.0 specifications.
 
 -}
-parseTokenWith : Parsers -> Url -> AuthorizationResult
+parseTokenWith : Parsers extraFields -> Url -> AuthorizationResult extraFields
 parseTokenWith { tokenParser, errorParser, authorizationSuccessParser, authorizationErrorParser } url_ =
     let
         url =
@@ -229,17 +238,17 @@ parseTokenWith { tokenParser, errorParser, authorizationSuccessParser, authoriza
   - authorizationErrorParser: Selected when the `errorParser` succeeded to parse the remaining parts
 
 -}
-type alias Parsers =
+type alias Parsers extraFields =
     { tokenParser : Query.Parser (Maybe Token)
     , errorParser : Query.Parser (Maybe ErrorCode)
-    , authorizationSuccessParser : Token -> Query.Parser AuthorizationSuccess
+    , authorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess extraFields)
     , authorizationErrorParser : ErrorCode -> Query.Parser AuthorizationError
     }
 
 
 {-| Default parsers according to RFC-6749
 -}
-defaultParsers : Parsers
+defaultParsers : Parsers Default
 defaultParsers =
     { tokenParser = defaultTokenParser
     , errorParser = defaultErrorParser
@@ -264,9 +273,27 @@ defaultErrorParser =
 
 {-| Default response success parser according to RFC-6749
 -}
-defaultAuthorizationSuccessParser : Token -> Query.Parser AuthorizationSuccess
+defaultAuthorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess Default)
 defaultAuthorizationSuccessParser accessToken =
-    Query.map3 (AuthorizationSuccess accessToken Nothing)
+    Query.map AuthorizationSuccess
+        (defaultFieldsParser accessToken)
+        |> Query.map (\authorizationSuccess -> authorizationSuccess Default)
+
+
+{-| Custom response success parser
+-}
+customAuthorizationSuccessParser : Query.Parser extraFields -> Token -> Query.Parser (AuthorizationSuccess extraFields)
+customAuthorizationSuccessParser extraFieldsParser accessToken =
+    Query.map2 AuthorizationSuccess
+        (defaultFieldsParser accessToken)
+        extraFieldsParser
+
+
+{-| Default fields parser
+-}
+defaultFieldsParser : Token -> Query.Parser DefaultFields
+defaultFieldsParser accessToken =
+    Query.map3 (DefaultFields accessToken Nothing)
         expiresInParser
         scopeParser
         stateParser

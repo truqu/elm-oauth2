@@ -103,12 +103,20 @@ type alias Credentials =
     The scope of the access token as described by [Section 3.3](https://tools.ietf.org/html/rfc6749#section-3.3).
 
 -}
-type alias AuthenticationSuccess =
+type AuthenticationSuccess extraFields
+    = AuthenticationSuccess DefaultFields extraFields
+
+
+type alias DefaultFields =
     { token : Token
     , refreshToken : Maybe Token
     , expiresIn : Maybe Int
     , scope : List String
     }
+
+
+type Default
+    = Default
 
 
 {-| Describes an OAuth error as a result of a request failure
@@ -155,7 +163,7 @@ type alias RequestParts a =
         req = makeTokenRequest toMsg authentication |> Http.request
 
 -}
-makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest : (Result Http.Error (Internal.AuthenticationSuccess Internal.Default) -> msg) -> Authentication -> RequestParts msg
 makeTokenRequest toMsg { credentials, password, scope, url, username } =
     let
         body =
@@ -170,7 +178,31 @@ makeTokenRequest toMsg { credentials, password, scope, url, username } =
         headers =
             makeHeaders credentials
     in
-    makeRequest toMsg url headers body
+    makeRequest defaultDecoder toMsg url headers body
+
+
+{-| Builds the request components required to get a token from client credentials, but also includes a decoder for the extra fields
+
+    let req : Http.Request TokenResponse
+        req = makeTokenRequest extraFieldsDecoder toMsg authentication |> Http.request
+
+-}
+makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (Internal.AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
+makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, password, scope, url, username } =
+    let
+        body =
+            [ Builder.string "grant_type" "password"
+            , Builder.string "username" username
+            , Builder.string "password" password
+            ]
+                |> urlAddList "scope" scope
+                |> Builder.toQuery
+                |> String.dropLeft 1
+
+        headers =
+            makeHeaders credentials
+    in
+    makeRequest extraFieldsDecoder toMsg url headers body
 
 
 
@@ -179,8 +211,7 @@ makeTokenRequest toMsg { credentials, password, scope, url, username } =
 --
 
 
-{-| Json decoder for a positive response. You may provide a custom response decoder using other decoders
-from this module, or some of your own craft.
+{-| Default Json decoder for a positive response.
 
     defaultAuthenticationSuccessDecoder : Decoder AuthenticationSuccess
     defaultAuthenticationSuccessDecoder =
@@ -191,9 +222,26 @@ from this module, or some of your own craft.
             scopeDecoder
 
 -}
-defaultAuthenticationSuccessDecoder : Json.Decoder AuthenticationSuccess
+defaultAuthenticationSuccessDecoder : Json.Decoder (Internal.AuthenticationSuccess Internal.Default)
 defaultAuthenticationSuccessDecoder =
-    Internal.authenticationSuccessDecoder
+    Internal.authenticationSuccessDecoder Internal.defaultDecoder
+
+
+{-| Custom Json decoder for a positive response. You provide a custom response decoder for any extra fields using other decoders
+from this module, or some of your own craft.
+
+    customAuthenticationSuccessDecoder : Decoder extraFields -> Decoder AuthenticationSuccess
+    customAuthenticationSuccessDecoder =
+        D.map4 AuthenticationSuccess
+            tokenDecoder
+            refreshTokenDecoder
+            expiresInDecoder
+            scopeDecoder
+
+-}
+customAuthenticationSuccessDecoder : Json.Decoder extraFields -> Json.Decoder (Internal.AuthenticationSuccess extraFields)
+customAuthenticationSuccessDecoder extraFieldsDecoder =
+    Internal.authenticationSuccessDecoder extraFieldsDecoder
 
 
 {-| Json decoder for an errored response.

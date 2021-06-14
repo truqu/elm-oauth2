@@ -1,4 +1,4 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, Default, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, defaultDecoder, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
 
 import Base64.Encode as Base64
 import Http as Http
@@ -19,13 +19,25 @@ import Url.Parser.Query as Query
 {-| Json decoder for a response. You may provide a custom response decoder using other decoders
 from this module, or some of your own craft.
 -}
-authenticationSuccessDecoder : Json.Decoder AuthenticationSuccess
-authenticationSuccessDecoder =
-    Json.map4 AuthenticationSuccess
+authenticationSuccessDecoder : Json.Decoder extraFields -> Json.Decoder (AuthenticationSuccess extraFields)
+authenticationSuccessDecoder extraFieldsDecoder =
+    Json.map2 AuthenticationSuccess
+        defaultFieldsDecoder
+        extraFieldsDecoder
+
+
+defaultFieldsDecoder : Json.Decoder DefaultFields
+defaultFieldsDecoder =
+    Json.map4 DefaultFields
         tokenDecoder
         refreshTokenDecoder
         expiresInDecoder
         scopeDecoder
+
+
+defaultDecoder : Json.Decoder Default
+defaultDecoder =
+    Json.succeed Default
 
 
 authenticationErrorDecoder : Json.Decoder e -> Json.Decoder (AuthenticationError e)
@@ -245,13 +257,13 @@ makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state, co
             { url | query = Just (baseQuery ++ "&" ++ query) }
 
 
-makeRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Url -> List Http.Header -> String -> RequestParts msg
-makeRequest toMsg url headers body =
+makeRequest : Json.Decoder extraFields -> (Result Http.Error (AuthenticationSuccess extraFields) -> msg) -> Url -> List Http.Header -> String -> RequestParts msg
+makeRequest extraFieldsDecoder toMsg url headers body =
     { method = "POST"
     , headers = headers
     , url = Url.toString url
     , body = Http.stringBody "application/x-www-form-urlencoded" body
-    , expect = Http.expectJson toMsg authenticationSuccessDecoder
+    , expect = Http.expectJson toMsg (authenticationSuccessDecoder extraFieldsDecoder)
     , timeout = Nothing
     , tracker = Nothing
     }
@@ -370,12 +382,20 @@ type alias AuthorizationError e =
     }
 
 
-type alias AuthenticationSuccess =
+type AuthenticationSuccess extraFields
+    = AuthenticationSuccess DefaultFields extraFields
+
+
+type alias DefaultFields =
     { token : Token
     , refreshToken : Maybe Token
     , expiresIn : Maybe Int
     , scope : List String
     }
+
+
+type Default
+    = Default
 
 
 type alias AuthenticationError e =
