@@ -1,4 +1,4 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, Default, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, defaultDecoder, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, Default(..), DefaultFields, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, defaultDecoder, defaultFields, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extraFields, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
 
 import Base64.Encode as Base64
 import Http as Http
@@ -403,3 +403,17 @@ type alias AuthenticationError e =
     , errorDescription : Maybe String
     , errorUri : Maybe String
     }
+
+
+
+-- ACCESSORS
+
+
+defaultFields : AuthenticationSuccess extraFields -> DefaultFields
+defaultFields (AuthenticationSuccess defaultFields_ _) =
+    defaultFields_
+
+
+extraFields : AuthenticationSuccess extraFields -> extraFields
+extraFields (AuthenticationSuccess _ extraFields_) =
+    extraFields_

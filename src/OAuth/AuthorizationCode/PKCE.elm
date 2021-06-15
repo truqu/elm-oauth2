@@ -1,7 +1,7 @@
 module OAuth.AuthorizationCode.PKCE exposing
     ( CodeVerifier, CodeChallenge, codeVerifierFromBytes, codeVerifierToString, mkCodeChallenge, codeChallengeToString
     , makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
-    , makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
+    , makeTokenRequest, Authentication, Credentials, AuthenticationError
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
     , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
@@ -398,41 +398,6 @@ type alias Authentication =
     }
 
 
-{-| The response obtained as a result of an authentication (implicit or not)
-
-  - token (_REQUIRED_):
-    The access token issued by the authorization server.
-
-  - refreshToken (_OPTIONAL_):
-    The refresh token, which can be used to obtain new access tokens using the same authorization
-    grant as described in [Section 6](https://tools.ietf.org/html/rfc6749#section-6).
-
-  - expiresIn (_RECOMMENDED_):
-    The lifetime in seconds of the access token. For example, the value "3600" denotes that the
-    access token will expire in one hour from the time the response was generated. If omitted, the
-    authorization server SHOULD provide the expiration time via other means or document the default
-    value.
-
-  - scope (_OPTIONAL, if identical to the scope requested; otherwise, REQUIRED_):
-    The scope of the access token as described by [Section 3.3](https://tools.ietf.org/html/rfc6749#section-3.3).
-
--}
-type AuthenticationSuccess extraFields
-    = AuthenticationSuccess DefaultFields extraFields
-
-
-type alias DefaultFields =
-    { token : Token
-    , refreshToken : Maybe Token
-    , expiresIn : Maybe Int
-    , scope : List String
-    }
-
-
-type Default
-    = Default
-
-
 {-| A simple type alias to ease readability of type signatures
 -}
 type alias AuthorizationCode =
@@ -460,20 +425,6 @@ type alias AuthenticationError =
     { error : ErrorCode
     , errorDescription : Maybe String
     , errorUri : Maybe String
-    }
-
-
-{-| Parts required to build a request. This record is given to `Http.request` in order
-to create a new request and may be adjusted at will.
--}
-type alias RequestParts a =
-    { method : String
-    , headers : List Http.Header
-    , url : String
-    , body : Http.Body
-    , expect : Http.Expect a
-    , timeout : Maybe Float
-    , tracker : Maybe String
     }
 
 
@@ -572,7 +523,7 @@ makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, code, codeVerifie
             scopeDecoder
 
 -}
-defaultAuthenticationSuccessDecoder : Json.Decoder (AuthenticationSuccess Default)
+defaultAuthenticationSuccessDecoder : Json.Decoder (Internal.AuthenticationSuccess Default)
 defaultAuthenticationSuccessDecoder =
     Internal.authenticationSuccessDecoder defaultDecoder
 
@@ -589,7 +540,7 @@ from this module, or some of your own craft.
             scopeDecoder
 
 -}
-customAuthenticationSuccessDecoder : Json.Decoder extraFields -> Json.Decoder (AuthenticationSuccess extraFields)
+customAuthenticationSuccessDecoder : Json.Decoder extraFields -> Json.Decoder (Internal.AuthenticationSuccess extraFields)
 customAuthenticationSuccessDecoder extraFieldsDecoder =
     Internal.authenticationSuccessDecoder extraFieldsDecoder
 

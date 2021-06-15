@@ -151,10 +151,6 @@ type alias DefaultFields =
     }
 
 
-type Default
-    = Default
-
-
 {-| Describes errors coming from attempting to parse a url after an OAuth redirection
 
   - Empty: means there were nothing (related to OAuth 2.0) to parse
@@ -273,11 +269,11 @@ defaultErrorParser =
 
 {-| Default response success parser according to RFC-6749
 -}
-defaultAuthorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess Default)
+defaultAuthorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess Internal.Default)
 defaultAuthorizationSuccessParser accessToken =
     Query.map AuthorizationSuccess
         (defaultFieldsParser accessToken)
-        |> Query.map (\authorizationSuccess -> authorizationSuccess Default)
+        |> Query.map (\authorizationSuccess -> authorizationSuccess Internal.Default)
 
 
 {-| Custom response success parser
