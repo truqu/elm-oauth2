@@ -68,9 +68,9 @@ request.
 -}
 
 import Http
-import Internal exposing (AuthenticationSuccess, authorizationErrorParser, defaultDecoder, errorParser, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, stateParser)
+import Internal exposing (authorizationErrorParser, defaultDecoder, errorParser, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, stateParser)
 import Json.Decode as Json
-import OAuth exposing (AuthorizationError, Default, ErrorCode, RequestParts, Token, errorCodeFromString)
+import OAuth exposing (AuthenticationSuccess, AuthorizationError, Default, ErrorCode, RequestParts, Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 import Url.Parser as Url exposing ((<?>))

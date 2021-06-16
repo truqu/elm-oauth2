@@ -1,8 +1,9 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, Default(..), DefaultFields, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, defaultDecoder, defaultFields, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extraFields, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing (Authorization, ResponseType(..), authorizationErrorParser, defaultDecoder, errorDescriptionParser, errorParser, errorUriParser, expiresInParser, extractTokenString, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, responseTypeToString, scopeParser, spaceSeparatedListParser, stateParser, tokenParser, urlAddList, urlAddMaybe)
 
 import Base64.Encode as Base64
 import Http as Http
 import Json.Decode as Json
+import OAuth exposing (AuthenticationError, AuthenticationSuccess, AuthorizationError, Default, DefaultFields, ErrorCode, RequestParts, Token, customAuthenticationSuccessDecoder, makeToken, tokenToString)
 import Url exposing (Protocol(..), Url)
 import Url.Builder as Builder exposing (QueryParameter)
 import Url.Parser as Url
@@ -11,129 +12,13 @@ import Url.Parser.Query as Query
 
 
 --
--- Json Decoders
+-- Decoders
 --
-
-
-{-| Json decoder for a response. You may provide a custom response decoder using other decoders
-from this module, or some of your own craft.
--}
-authenticationSuccessDecoder : Json.Decoder extraFields -> Json.Decoder (AuthenticationSuccess extraFields)
-authenticationSuccessDecoder extraFieldsDecoder =
-    Json.map2 AuthenticationSuccess
-        defaultFieldsDecoder
-        extraFieldsDecoder
-
-
-defaultFieldsDecoder : Json.Decoder DefaultFields
-defaultFieldsDecoder =
-    Json.map4 DefaultFields
-        tokenDecoder
-        refreshTokenDecoder
-        expiresInDecoder
-        scopeDecoder
 
 
 defaultDecoder : Json.Decoder Default
 defaultDecoder =
-    Json.succeed Default
-
-
-authenticationErrorDecoder : Json.Decoder e -> Json.Decoder (AuthenticationError e)
-authenticationErrorDecoder errorCodeDecoder =
-    Json.map3 AuthenticationError
-        errorCodeDecoder
-        errorDescriptionDecoder
-        errorUriDecoder
-
-
-{-| Json decoder for an expire timestamp
--}
-expiresInDecoder : Json.Decoder (Maybe Int)
-expiresInDecoder =
-    Json.maybe <| Json.field "expires_in" Json.int
-
-
-{-| Json decoder for a scope
--}
-scopeDecoder : Json.Decoder (List String)
-scopeDecoder =
-    Json.map (Maybe.withDefault []) <| Json.maybe <| Json.field "scope" (Json.list Json.string)
-
-
-{-| Json decoder for a scope, allowing comma- or space-separated scopes
--}
-lenientScopeDecoder : Json.Decoder (List String)
-lenientScopeDecoder =
-    Json.map (Maybe.withDefault []) <|
-        Json.maybe <|
-            Json.field "scope" <|
-                Json.oneOf
-                    [ Json.list Json.string
-                    , Json.map (String.split ",") Json.string
-                    ]
-
-
-{-| Json decoder for an access token
--}
-tokenDecoder : Json.Decoder Token
-tokenDecoder =
-    Json.andThen (decoderFromJust "missing or invalid 'access_token' / 'token_type'") <|
-        Json.map2 makeToken
-            (Json.field "token_type" Json.string |> Json.map Just)
-            (Json.field "access_token" Json.string |> Json.map Just)
-
-
-{-| Json decoder for a refresh token
--}
-refreshTokenDecoder : Json.Decoder (Maybe Token)
-refreshTokenDecoder =
-    Json.andThen (decoderFromJust "missing or invalid 'refresh_token' / 'token_type'") <|
-        Json.map2 makeRefreshToken
-            (Json.field "token_type" Json.string)
-            (Json.field "refresh_token" Json.string |> Json.maybe)
-
-
-{-| Json decoder for 'error' field
--}
-errorDecoder : (String -> a) -> Json.Decoder a
-errorDecoder errorCodeFromString =
-    Json.map errorCodeFromString <| Json.field "error" Json.string
-
-
-{-| Json decoder for 'error\_description' field
--}
-errorDescriptionDecoder : Json.Decoder (Maybe String)
-errorDescriptionDecoder =
-    Json.maybe <| Json.field "error_description" Json.string
-
-
-{-| Json decoder for 'error\_uri' field
--}
-errorUriDecoder : Json.Decoder (Maybe String)
-errorUriDecoder =
-    Json.maybe <| Json.field "error_uri" Json.string
-
-
-{-| Combinator for JSON decoders to extract values from a `Maybe` or fail
-with the given message (when `Nothing` is encountered)
--}
-decoderFromJust : String -> Maybe a -> Json.Decoder a
-decoderFromJust msg =
-    Maybe.map Json.succeed >> Maybe.withDefault (Json.fail msg)
-
-
-{-| Combinator for JSON decoders to extact values from a `Result _ _` or fail
-with an appropriate message
--}
-decoderFromResult : Result String a -> Json.Decoder a
-decoderFromResult res =
-    case res of
-        Err msg ->
-            Json.fail msg
-
-        Ok a ->
-            Json.succeed a
+    Json.succeed OAuth.Default
 
 
 
@@ -142,7 +27,7 @@ decoderFromResult res =
 --
 
 
-authorizationErrorParser : e -> Query.Parser (AuthorizationError e)
+authorizationErrorParser : ErrorCode -> Query.Parser AuthorizationError
 authorizationErrorParser errorCode =
     Query.map3 (AuthorizationError errorCode)
         errorDescriptionParser
@@ -262,7 +147,7 @@ makeRequest extraFieldsDecoder toMsg url headers body =
     , headers = headers
     , url = Url.toString url
     , body = Http.stringBody "application/x-www-form-urlencoded" body
-    , expect = Http.expectJson toMsg (authenticationSuccessDecoder extraFieldsDecoder)
+    , expect = Http.expectJson toMsg (customAuthenticationSuccessDecoder extraFieldsDecoder)
     , timeout = Nothing
     , tracker = Nothing
     }
@@ -352,17 +237,6 @@ type ResponseType
 --
 
 
-type alias RequestParts a =
-    { method : String
-    , headers : List Http.Header
-    , url : String
-    , body : Http.Body
-    , expect : Http.Expect a
-    , timeout : Maybe Float
-    , tracker : Maybe String
-    }
-
-
 type alias Authorization =
     { clientId : String
     , url : Url
@@ -371,48 +245,3 @@ type alias Authorization =
     , state : Maybe String
     , codeChallenge : Maybe String
     }
-
-
-type alias AuthorizationError e =
-    { error : e
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
-    , state : Maybe String
-    }
-
-
-type AuthenticationSuccess extraFields
-    = AuthenticationSuccess DefaultFields extraFields
-
-
-type alias DefaultFields =
-    { token : Token
-    , refreshToken : Maybe Token
-    , expiresIn : Maybe Int
-    , scope : List String
-    }
-
-
-type Default
-    = Default
-
-
-type alias AuthenticationError e =
-    { error : e
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
-    }
-
-
-
--- ACCESSORS
-
-
-defaultFields : AuthenticationSuccess extraFields -> DefaultFields
-defaultFields (AuthenticationSuccess defaultFields_ _) =
-    defaultFields_
-
-
-extraFields : AuthenticationSuccess extraFields -> extraFields
-extraFields (AuthenticationSuccess _ extraFields_) =
-    extraFields_

@@ -56,9 +56,9 @@ of this flow.
 import Base64.Encode as Base64
 import Bytes exposing (Bytes)
 import Http
-import Internal exposing (AuthenticationSuccess, authorizationErrorParser, errorParser, parseUrlQuery, stateParser)
+import Internal exposing (authorizationErrorParser, defaultDecoder, errorParser, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, stateParser)
 import Json.Decode as Json
-import OAuth exposing (Default, ErrorCode, Token, errorCodeFromString)
+import OAuth exposing (AuthenticationSuccess, Default, ErrorCode, RequestParts, Token, errorCodeFromString)
 import SHA256 as SHA256
 import Url exposing (Url)
 import Url.Builder as Builder

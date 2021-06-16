@@ -19,9 +19,9 @@ can be used in subsequent requests.
 -}
 
 import Http
-import Internal exposing (AuthenticationSuccess, defaultDecoder, extractTokenString, makeHeaders, makeRequest, urlAddList)
+import Internal exposing (defaultDecoder, extractTokenString, makeHeaders, makeRequest, urlAddList)
 import Json.Decode as Json
-import OAuth exposing (Default, ErrorCode(..), RequestParts, Token)
+import OAuth exposing (AuthenticationSuccess, Default, ErrorCode(..), RequestParts, Token)
 import Url exposing (Url)
 import Url.Builder as Builder
 

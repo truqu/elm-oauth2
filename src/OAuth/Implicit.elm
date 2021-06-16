@@ -266,7 +266,7 @@ defaultAuthorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess 
 defaultAuthorizationSuccessParser accessToken =
     Query.map AuthorizationSuccess
         (defaultFieldsParser accessToken)
-        |> Query.map (\authorizationSuccess -> authorizationSuccess Internal.Default)
+        |> Query.map (\authorizationSuccess -> authorizationSuccess OAuth.Default)
 
 
 {-| Custom response success parser

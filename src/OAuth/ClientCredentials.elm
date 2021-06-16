@@ -21,8 +21,9 @@ request.
 -}
 
 import Http
-import Internal as Internal exposing (..)
+import Internal exposing (defaultDecoder, makeHeaders, makeRequest, urlAddList)
 import Json.Decode as Json
+import OAuth exposing (AuthenticationSuccess, Default, RequestParts)
 import Url exposing (Url)
 import Url.Builder as Builder
 
@@ -69,7 +70,7 @@ type alias Credentials =
         req = makeTokenRequest toMsg authentication |> Http.request
 
 -}
-makeTokenRequest : (Result Http.Error (Internal.AuthenticationSuccess Internal.Default) -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest : (Result Http.Error (AuthenticationSuccess Default) -> msg) -> Authentication -> RequestParts msg
 makeTokenRequest toMsg { credentials, scope, url } =
     let
         body =
@@ -94,7 +95,7 @@ makeTokenRequest toMsg { credentials, scope, url } =
         req = makeTokenRequest extraFieldsDecoder toMsg authentication |> Http.request
 
 -}
-makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (Internal.AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
+makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
 makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, scope, url } =
     let
         body =
