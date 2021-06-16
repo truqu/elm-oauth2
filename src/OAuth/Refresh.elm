@@ -1,7 +1,4 @@
-module OAuth.Refresh exposing
-    ( makeTokenRequest, Authentication, Credentials
-    , makeCustomTokenRequest
-    )
+module OAuth.Refresh exposing (makeTokenRequest, makeCustomTokenRequest, Authentication, Credentials)
 
 {-| If the authorization server issued a refresh token to the client, the
 client may make a refresh request to the token endpoint to obtain a new access token
@@ -17,24 +14,14 @@ can be used in subsequent requests.
 
 ## Authenticate
 
-@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
-
-
-## JSON Decoders
-
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-
-
-## JSON Decoders (advanced)
-
-@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs makeTokenRequest, makeCustomTokenRequest, Authentication, Credentials
 
 -}
 
 import Http
-import Internal as Internal exposing (..)
+import Internal exposing (AuthenticationSuccess, defaultDecoder, extractTokenString, makeHeaders, makeRequest, urlAddList)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
+import OAuth exposing (Default, ErrorCode(..), RequestParts, Token)
 import Url exposing (Url)
 import Url.Builder as Builder
 
@@ -80,7 +67,7 @@ type alias Credentials =
         req = makeTokenRequest toMsg reqParts |> Http.request
 
 -}
-makeTokenRequest : (Result Http.Error (Internal.AuthenticationSuccess Internal.Default) -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest : (Result Http.Error (AuthenticationSuccess Default) -> msg) -> Authentication -> RequestParts msg
 makeTokenRequest toMsg { credentials, scope, token, url } =
     let
         body =
@@ -103,7 +90,7 @@ makeTokenRequest toMsg { credentials, scope, token, url } =
         req = makeTokenRequest extraFieldsDecoder toMsg authentication |> Http.request
 
 -}
-makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (Internal.AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
+makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
 makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, scope, token, url } =
     let
         body =

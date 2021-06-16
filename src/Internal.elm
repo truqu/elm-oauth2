@@ -3,7 +3,6 @@ module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorizat
 import Base64.Encode as Base64
 import Http as Http
 import Json.Decode as Json
-import OAuth exposing (..)
 import Url exposing (Protocol(..), Url)
 import Url.Builder as Builder exposing (QueryParameter)
 import Url.Parser as Url

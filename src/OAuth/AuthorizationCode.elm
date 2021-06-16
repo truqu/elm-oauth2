@@ -1,6 +1,6 @@
 module OAuth.AuthorizationCode exposing
-    ( makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
-    , makeTokenRequest, Authentication, Credentials, AuthenticationSuccess
+    ( makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess
+    , makeTokenRequest, Authentication, Credentials
     , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     , makeCustomTokenRequest
     )
@@ -58,17 +58,7 @@ request.
 
 ## Authenticate
 
-@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
-
-
-## JSON Decoders
-
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-
-
-## JSON Decoders (advanced)
-
-@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs makeTokenRequest, Authentication, Credentials
 
 
 ## Query Parsers (advanced)
@@ -78,9 +68,9 @@ request.
 -}
 
 import Http
-import Internal as Internal exposing (..)
+import Internal exposing (AuthenticationSuccess, authorizationErrorParser, defaultDecoder, errorParser, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, stateParser)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode, Token, errorCodeFromString)
+import OAuth exposing (AuthorizationError, Default, ErrorCode, RequestParts, Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 import Url.Parser as Url exposing ((<?>))
@@ -121,34 +111,6 @@ type alias Authorization =
     , url : Url
     , redirectUri : Url
     , scope : List String
-    , state : Maybe String
-    }
-
-
-{-| Describes an OAuth error as a result of an authorization request failure
-
-  - error (_REQUIRED_):
-    A single ASCII error code.
-
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
-    include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
-
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
-
-  - state (_REQUIRED if `state` was present in the authorization request_):
-    The exact value received from the client
-
--}
-type alias AuthorizationError =
-    { error : ErrorCode
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
     , state : Maybe String
     }
 
@@ -331,79 +293,6 @@ type alias Authentication =
     }
 
 
-{-| The response obtained as a result of an authentication (implicit or not)
-
-  - token (_REQUIRED_):
-    The access token issued by the authorization server.
-
-  - refreshToken (_OPTIONAL_):
-    The refresh token, which can be used to obtain new access tokens using the same authorization
-    grant as described in [Section 6](https://tools.ietf.org/html/rfc6749#section-6).
-
-  - expiresIn (_RECOMMENDED_):
-    The lifetime in seconds of the access token. For example, the value "3600" denotes that the
-    access token will expire in one hour from the time the response was generated. If omitted, the
-    authorization server SHOULD provide the expiration time via other means or document the default
-    value.
-
-  - scope (_OPTIONAL, if identical to the scope requested; otherwise, REQUIRED_):
-    The scope of the access token as described by [Section 3.3](https://tools.ietf.org/html/rfc6749#section-3.3).
-
--}
-type AuthenticationSuccess extraFields
-    = AuthenticationSuccess DefaultFields extraFields
-
-
-type alias DefaultFields =
-    { token : Token
-    , refreshToken : Maybe Token
-    , expiresIn : Maybe Int
-    , scope : List String
-    }
-
-
-type Default
-    = Default
-
-
-{-| Describes an OAuth error as a result of a request failure
-
-  - error (_REQUIRED_):
-    A single ASCII error code.
-
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
-    include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
-
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
-
--}
-type alias AuthenticationError =
-    { error : ErrorCode
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
-    }
-
-
-{-| Parts required to build a request. This record is given to `Http.request` in order
-to create a new request and may be adjusted at will.
--}
-type alias RequestParts a =
-    { method : String
-    , headers : List Http.Header
-    , url : String
-    , body : Http.Body
-    , expect : Http.Expect a
-    , timeout : Maybe Float
-    , tracker : Maybe String
-    }
-
-
 {-| Describes at least a `clientId` and if define, a complete set of credentials
 with the `secret`. The secret is so-to-speak optional and depends on whether the
 authorization server you interact with requires a 'Basic' authentication on top of
@@ -426,7 +315,7 @@ type alias Credentials =
         req = makeTokenRequest toMsg authentication |> Http.request
 
 -}
-makeTokenRequest : (Result Http.Error (Internal.AuthenticationSuccess Internal.Default) -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest : (Result Http.Error (AuthenticationSuccess Default) -> msg) -> Authentication -> RequestParts msg
 makeTokenRequest toMsg { credentials, code, url, redirectUri } =
     let
         body =
@@ -456,7 +345,7 @@ makeTokenRequest toMsg { credentials, code, url, redirectUri } =
         req = makeTokenRequest extraFieldsDecoder toMsg authentication |> Http.request
 
 -}
-makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (Internal.AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
+makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
 makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, code, url, redirectUri } =
     let
         body =

@@ -1,4 +1,4 @@
-module OAuth.Password exposing (makeTokenRequest, Authentication, Credentials)
+module OAuth.Password exposing (makeTokenRequest, makeCustomTokenRequest, Authentication, Credentials)
 
 {-| The resource owner password credentials grant type is suitable in
 cases where the resource owner has a trust relationship with the
@@ -17,24 +17,13 @@ request.
 
 ## Authenticate
 
-@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
-
-
-## JSON Decoders
-
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-
-
-## JSON Decoders (advanced)
-
-@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs makeTokenRequest, makeCustomTokenRequest, Authentication, Credentials
 
 -}
 
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 

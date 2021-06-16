@@ -16,24 +16,13 @@ request.
 
 ## Authenticate
 
-@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
-
-
-## JSON Decoders
-
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-
-
-## JSON Decoders (advanced)
-
-@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs makeTokenRequest, Authentication, Credentials
 
 -}
 
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
 import Url exposing (Url)
 import Url.Builder as Builder
 

@@ -1,7 +1,7 @@
 module OAuth.Implicit exposing
-    ( makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
-    , parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
-    , customAuthorizationSuccessParser
+    ( makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult(..), AuthorizationSuccess
+    , defaultFields, extraFields
+    , parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser, customAuthorizationSuccessParser
     )
 
 {-| The implicit grant type is used to obtain access tokens (it does not
@@ -34,17 +34,22 @@ request.
 
 ## Authorize
 
-@docs makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError
+@docs makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult, AuthorizationSuccess
+
+
+## Helpers
+
+@docs defaultFields, extraFields
 
 
 ## Custom Parsers (advanced)
 
-@docs parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+@docs parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser, customAuthorizationSuccessParser
 
 -}
 
-import Internal exposing (..)
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
+import Internal exposing (authorizationErrorParser, errorParser, expiresInParser, parseUrlQuery, scopeParser, stateParser, tokenParser)
+import OAuth exposing (AuthorizationError, Default, ErrorCode(..), Token, errorCodeFromString)
 import Url exposing (Protocol(..), Url)
 import Url.Parser as Url exposing ((<?>))
 import Url.Parser.Query as Query
@@ -84,34 +89,6 @@ type alias Authorization =
     , url : Url
     , redirectUri : Url
     , scope : List String
-    , state : Maybe String
-    }
-
-
-{-| Describes an OAuth error as a result of an authorization request failure
-
-  - error (_REQUIRED_):
-    A single ASCII error code.
-
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
-    include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
-
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
-
-  - state (_REQUIRED if `state` was present in the authorization request_):
-    The exact value received from the client
-
--}
-type alias AuthorizationError =
-    { error : ErrorCode
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
     , state : Maybe String
     }
 
@@ -193,6 +170,22 @@ parseToken =
 
 
 --
+-- Helpers
+--
+
+
+defaultFields : AuthorizationSuccess extraFields -> DefaultFields
+defaultFields (AuthorizationSuccess defaultFields_ _) =
+    defaultFields_
+
+
+extraFields : AuthorizationSuccess extraFields -> extraFields
+extraFields (AuthorizationSuccess _ extraFields_) =
+    extraFields_
+
+
+
+--
 -- Authorize (Advanced)
 --
 
@@ -269,7 +262,7 @@ defaultErrorParser =
 
 {-| Default response success parser according to RFC-6749
 -}
-defaultAuthorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess Internal.Default)
+defaultAuthorizationSuccessParser : Token -> Query.Parser (AuthorizationSuccess Default)
 defaultAuthorizationSuccessParser accessToken =
     Query.map AuthorizationSuccess
         (defaultFieldsParser accessToken)

@@ -1,9 +1,7 @@
 module OAuth.AuthorizationCode.PKCE exposing
     ( CodeVerifier, CodeChallenge, codeVerifierFromBytes, codeVerifierToString, mkCodeChallenge, codeChallengeToString
     , makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
-    , makeTokenRequest, Authentication, Credentials, AuthenticationError
-    , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-    , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+    , makeTokenRequest, makeCustomTokenRequest, Authentication, Credentials
     , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
 
@@ -46,17 +44,7 @@ of this flow.
 
 ## Authenticate
 
-@docs makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
-
-
-## JSON Decoders
-
-@docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-
-
-## JSON Decoders (advanced)
-
-@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs makeTokenRequest, makeCustomTokenRequest, Authentication, Credentials
 
 
 ## Query Parsers (advanced)
@@ -68,9 +56,9 @@ of this flow.
 import Base64.Encode as Base64
 import Bytes exposing (Bytes)
 import Http
-import Internal as Internal exposing (..)
+import Internal exposing (AuthenticationSuccess, authorizationErrorParser, errorParser, parseUrlQuery, stateParser)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode, Token, errorCodeFromString)
+import OAuth exposing (Default, ErrorCode, Token, errorCodeFromString)
 import SHA256 as SHA256
 import Url exposing (Url)
 import Url.Builder as Builder
@@ -404,30 +392,6 @@ type alias AuthorizationCode =
     String
 
 
-{-| Describes an OAuth error as a result of a request failure
-
-  - error (_REQUIRED_):
-    A single ASCII error code.
-
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
-    include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
-
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
-
--}
-type alias AuthenticationError =
-    { error : ErrorCode
-    , errorDescription : Maybe String
-    , errorUri : Maybe String
-    }
-
-
 {-| Describes at least a `clientId` and if define, a complete set of credentials
 with the `secret`. The secret is so-to-speak optional and depends on whether the
 authorization server you interact with requires a 'Basic' authentication on top of
@@ -450,7 +414,7 @@ type alias Credentials =
         req = makeTokenRequest toMsg authentication |> Http.request
 
 -}
-makeTokenRequest : (Result Http.Error (Internal.AuthenticationSuccess Internal.Default) -> msg) -> Authentication -> RequestParts msg
+makeTokenRequest : (Result Http.Error (AuthenticationSuccess Default) -> msg) -> Authentication -> RequestParts msg
 makeTokenRequest toMsg { credentials, code, codeVerifier, url, redirectUri } =
     let
         body =
@@ -481,7 +445,7 @@ makeTokenRequest toMsg { credentials, code, codeVerifier, url, redirectUri } =
         req = makeTokenRequest extraFieldsDecoder toMsg authentication |> Http.request
 
 -}
-makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (Internal.AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
+makeCustomTokenRequest : Json.Decoder extraFields -> (Result Http.Error (AuthenticationSuccess extraFields) -> msg) -> Authentication -> RequestParts msg
 makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, code, codeVerifier, url, redirectUri } =
     let
         body =
@@ -504,118 +468,3 @@ makeCustomTokenRequest extraFieldsDecoder toMsg { credentials, code, codeVerifie
                         Just { clientId = credentials.clientId, secret = secret }
     in
     makeRequest extraFieldsDecoder toMsg url headers body
-
-
-
---
--- Json Decoders
---
-
-
-{-| Default Json decoder for a positive response.
-
-    defaultAuthenticationSuccessDecoder : Decoder AuthenticationSuccess
-    defaultAuthenticationSuccessDecoder =
-        D.map4 AuthenticationSuccess
-            tokenDecoder
-            refreshTokenDecoder
-            expiresInDecoder
-            scopeDecoder
-
--}
-defaultAuthenticationSuccessDecoder : Json.Decoder (Internal.AuthenticationSuccess Default)
-defaultAuthenticationSuccessDecoder =
-    Internal.authenticationSuccessDecoder defaultDecoder
-
-
-{-| Custom Json decoder for a positive response. You provide a custom response decoder for any extra fields using other decoders
-from this module, or some of your own craft.
-
-    customAuthenticationSuccessDecoder : Decoder extraFields -> Decoder AuthenticationSuccess
-    customAuthenticationSuccessDecoder =
-        D.map4 AuthenticationSuccess
-            tokenDecoder
-            refreshTokenDecoder
-            expiresInDecoder
-            scopeDecoder
-
--}
-customAuthenticationSuccessDecoder : Json.Decoder extraFields -> Json.Decoder (Internal.AuthenticationSuccess extraFields)
-customAuthenticationSuccessDecoder extraFieldsDecoder =
-    Internal.authenticationSuccessDecoder extraFieldsDecoder
-
-
-{-| Json decoder for an errored response.
-
-    case res of
-        Err (Http.BadStatus { body }) ->
-            case Json.decodeString OAuth.AuthorizationCode.defaultAuthenticationErrorDecoder body of
-                Ok { error, errorDescription } ->
-                    doSomething
-
-                _ ->
-                    parserFailed
-
-        _ ->
-            someOtherError
-
--}
-defaultAuthenticationErrorDecoder : Json.Decoder AuthenticationError
-defaultAuthenticationErrorDecoder =
-    Internal.authenticationErrorDecoder defaultErrorDecoder
-
-
-{-| Json decoder for an 'expire' timestamp
--}
-defaultExpiresInDecoder : Json.Decoder (Maybe Int)
-defaultExpiresInDecoder =
-    Internal.expiresInDecoder
-
-
-{-| Json decoder for a 'scope'
--}
-defaultScopeDecoder : Json.Decoder (List String)
-defaultScopeDecoder =
-    Internal.scopeDecoder
-
-
-{-| Json decoder for a 'scope', allowing comma- or space-separated scopes
--}
-lenientScopeDecoder : Json.Decoder (List String)
-lenientScopeDecoder =
-    Internal.lenientScopeDecoder
-
-
-{-| Json decoder for an 'access\_token'
--}
-defaultTokenDecoder : Json.Decoder Token
-defaultTokenDecoder =
-    Internal.tokenDecoder
-
-
-{-| Json decoder for a 'refresh\_token'
--}
-defaultRefreshTokenDecoder : Json.Decoder (Maybe Token)
-defaultRefreshTokenDecoder =
-    Internal.refreshTokenDecoder
-
-
-{-| Json decoder for 'error' field
--}
-defaultErrorDecoder : Json.Decoder ErrorCode
-defaultErrorDecoder =
-    Internal.errorDecoder errorCodeFromString
-
-
-{-| Json decoder for 'error\_description' field
--}
-defaultErrorDescriptionDecoder : Json.Decoder (Maybe String)
-defaultErrorDescriptionDecoder =
-    Internal.errorDescriptionDecoder
-
-
-{-| Json decoder for 'error\_uri' field
--}
-defaultErrorUriDecoder : Json.Decoder (Maybe String)
-defaultErrorUriDecoder =
-    Internal.errorUriDecoder
