@@ -4,7 +4,7 @@ module OAuth exposing
     , TokenType, TokenString, makeToken, makeRefreshToken
     , defaultAuthenticationSuccessDecoder, customAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
     , defaultExpiresInDecoder, defaultScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
-    , AuthenticationError, AuthenticationSuccess(..), AuthorizationError, Default(..), DefaultFields, RequestParts
+    , RequestParts, AuthenticationSuccess(..), DefaultFields, Default(..), AuthenticationError, AuthorizationError
     , defaultFields, extraFields
     , lenientScopeDecoder
     )
@@ -66,7 +66,7 @@ used.
 
 ## Authenticate
 
-@docs AuthenticationError, AuthenticationSuccess, AuthorizationError, Default, DefaultFields, RequestParts
+@docs RequestParts, AuthenticationSuccess, DefaultFields, Default, AuthenticationError, AuthorizationError
 
 
 ## Helpers
