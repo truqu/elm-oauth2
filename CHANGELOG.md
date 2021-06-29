@@ -1,3 +1,273 @@
+## v8.0.0 (2021-??-??)
+
+- Allow more advanced control for tweaking parsers, decoders and url builders. This is particularly useful for applications integrating with systems which are either not strictly following the OAuth2.0 specifications, or, systems who introduce custom fields of some importance for the underlying application. (see #29, #23, #21)
+
+- Update dependencies for base64 encoding
+
+### Diff
+
+#### `OAuth` - MINOR
+
+- Added:
+
+  ```elm
+  type GrantType
+      = AuthorizationCode
+      | Password
+      | ClientCredentials
+      | RefreshToken
+      | CustomGrant String
+
+  grantTypeToString : GrantType -> String
+  ```
+
+  ```elm
+  type ResponseType
+      = Code
+      | Token
+      | CustomResponse String
+
+  responseTypeToString : ResponseType -> String
+  ```
+
+#### `OAuth.Implicit` - MAJOR 
+
+- Added:
+
+  ```elm
+  makeAuthorizationUrlWith :
+      ResponseType
+      -> Dict String String
+      -> Authorization
+      -> Url
+  ```
+
+- Changed: 
+
+  ```elm
+  -- type alias Parsers =
+  --     { tokenParser :
+  --           Query.Parser (Maybe Token)
+  --     , errorParser :
+  --           Query.Parser (Maybe ErrorCode)
+  --     , authorizationSuccessParser :
+  --           String -> Query.Parser AuthorizationSuccess
+  --     , authorizationErrorParser :
+  --           ErrorCode -> Query.Parser AuthorizationError
+  --     }
+
+  type alias Parsers error success =
+      { tokenParser :
+            Query.Parser (Maybe Token)
+      , errorParser :
+            Query.Parser (Maybe ErrorCode)
+      , authorizationSuccessParser :
+            String -> Query.Parser success
+      , authorizationErrorParser :
+            ErrorCode -> Query.Parser error
+      }
+  ```
+
+  ```elm
+  -- defaultParsers : Parsers
+  defaultParsers : Parsers AuthorizationError AuthorizationSuccess
+  ```
+
+  ```elm
+  -- parseTokenWith : Parsers -> Url -> AuthorizationResult
+  parseTokenWith : Parsers error success -> Url -> AuthorizationResultWith error success
+  ```
+
+#### `OAuth.AuthorizationCode` - MAJOR
+
+- Added:
+
+  ```elm
+  makeAuthorizationUrlWith :
+      ResponseType
+      -> Dict String String
+      -> Authorization
+      -> Url
+  ```
+
+  ```elm
+  makeTokenRequestWith :
+      OAuth.GrantType
+      -> Json.Decoder success
+      -> Dict String String
+      -> (Result Http.Error success -> msg)
+      -> Authentication
+      -> RequestParts msg
+  ```
+
+- Changed:
+
+  ```elm
+  -- type AuthorizationResult
+  --     = Empty
+  --     | Error AuthorizationError
+  --     | Success AuthorizationSuccess
+
+  type alias AuthorizationResult =
+      AuthorizationResultWith AuthorizationError AuthorizationSuccess
+
+  type AuthorizationResultWith error success
+      = Empty
+      | Error error
+      | Success success
+  ```
+
+  ```elm
+  -- type alias Parsers =
+  --     { codeParser :
+  --           Query.Parser (Maybe String)
+  --     , errorParser :
+  --           Query.Parser (Maybe ErrorCode)
+  --     , authorizationSuccessParser :
+  --           String -> Query.Parser AuthorizationSuccess
+  --     , authorizationErrorParser :
+  --           ErrorCode -> Query.Parser AuthorizationError
+  --     }
+
+  type alias Parsers error success =
+      { codeParser :
+            Query.Parser (Maybe String)
+      , errorParser :
+            Query.Parser (Maybe ErrorCode)
+      , authorizationSuccessParser :
+            String -> Query.Parser success
+      , authorizationErrorParser :
+            ErrorCode -> Query.Parser error
+      }
+  ```
+
+  ```elm
+  -- defaultParsers : Parsers
+  defaultParsers : Parsers AuthorizationError AuthorizationSuccess
+  ```
+
+  ```elm
+  -- parseCodeWith : Parsers -> Url -> AuthorizationResult
+  parseCodeWith : Parsers error success -> Url -> AuthorizationResultWith error success
+  ```
+
+#### `OAuth.AuthorizationCode.PKCE` - MAJOR 
+
+- Added:
+
+  ```elm
+  makeAuthorizationUrlWith :
+      ResponseType
+      -> Dict String String
+      -> Authorization
+      -> Url
+  ```
+
+  ```elm
+  makeTokenRequestWith :
+      OAuth.GrantType
+      -> Json.Decoder success
+      -> Dict String String
+      -> (Result Http.Error success -> msg)
+      -> Authentication
+      -> RequestParts msg
+  ```
+
+- Changed:
+
+  ```elm
+  -- type AuthorizationResult
+  --     = Empty
+  --     | Error AuthorizationError
+  --     | Success AuthorizationSuccess
+
+  type alias AuthorizationResult =
+      AuthorizationResultWith AuthorizationError AuthorizationSuccess
+
+  type AuthorizationResultWith error success
+      = Empty
+      | Error error
+      | Success success
+  ```
+
+  ```elm
+  -- type alias Parsers =
+  --     { codeParser :
+  --           Query.Parser (Maybe String)
+  --     , errorParser :
+  --           Query.Parser (Maybe ErrorCode)
+  --     , authorizationSuccessParser :
+  --           String -> Query.Parser AuthorizationSuccess
+  --     , authorizationErrorParser :
+  --           ErrorCode -> Query.Parser AuthorizationError
+  --     }
+
+  type alias Parsers error success =
+      { codeParser :
+            Query.Parser (Maybe String)
+      , errorParser :
+            Query.Parser (Maybe ErrorCode)
+      , authorizationSuccessParser :
+            String -> Query.Parser success
+      , authorizationErrorParser :
+            ErrorCode -> Query.Parser error
+      }
+  ```
+
+  ```elm
+  -- defaultParsers : Parsers
+  defaultParsers : Parsers AuthorizationError AuthorizationSuccess
+  ```
+
+  ```elm
+  -- parseCodeWith : Parsers -> Url -> AuthorizationResult
+  parseCodeWith : Parsers error success -> Url -> AuthorizationResultWith error success
+  ```
+
+
+#### `OAuth.ClientCredentials` - MINOR 
+
+- Added:
+
+  ```elm
+  makeTokenRequestWith :
+      GrantType
+      -> Json.Decoder success
+      -> Dict String String
+      -> (Result Http.Error success -> msg)
+      -> Authentication
+      -> RequestParts msg
+  ```
+
+#### `OAuth.Password` - MINOR 
+
+- Added:
+
+  ```elm
+  makeTokenRequestWith :
+      GrantType
+      -> Json.Decoder success
+      -> Dict String String
+      -> (Result Http.Error success -> msg)
+      -> Authentication
+      -> RequestParts msg
+  ```
+
+
+#### `OAuth.Refresh` - MINOR 
+
+- Added:
+
+  ```elm
+  makeTokenRequestWith :
+      GrantType
+      -> Json.Decoder success
+      -> Dict String String
+      -> (Result Http.Error success -> msg)
+      -> Authentication
+      -> RequestParts msg
+  ```
+
 ## v7.0.1 (2020-12-05)
 
 - Updated dependency `ivadzy/bbase64@1.1.1` renamed as `chelovek0v/bbase64@1.0.1`
