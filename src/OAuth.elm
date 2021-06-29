@@ -1,5 +1,6 @@
 module OAuth exposing
     ( Token, useToken, tokenToString, tokenFromString
+    , ResponseType(..), responseTypeToString, GrantType(..), grantTypeToString
     , ErrorCode(..), errorCodeToString, errorCodeFromString
     , TokenType, TokenString, makeToken, makeRefreshToken
     )
@@ -37,6 +38,11 @@ used.
 ## Token
 
 @docs Token, useToken, tokenToString, tokenFromString
+
+
+## Response & Grant types
+
+@docs ResponseType, responseTypeToString, GrantType, grantTypeToString
 
 
 ## ErrorCode
@@ -158,6 +164,69 @@ tokenFromString str =
 
         _ ->
             Nothing
+
+
+
+--
+-- ResponseType / GrandType
+--
+
+
+{-| Describes the desired type of response to an authorization. Use `Code` to ask for an
+authorization code and continue with the according flow. Use `Token` to do an implicit
+authentication and directly retrieve a `Token` from the authorization. If need be, you may provide a
+custom response type should the server returns a non-standard response type.
+-}
+type ResponseType
+    = Code
+    | Token
+    | CustomResponse String
+
+
+{-| Gets the `String` representation of a `ResponseType`.
+-}
+responseTypeToString : ResponseType -> String
+responseTypeToString r =
+    case r of
+        Code ->
+            "code"
+
+        Token ->
+            "token"
+
+        CustomResponse str ->
+            str
+
+
+{-| Describes the desired type of grant to an authentication.
+-}
+type GrantType
+    = AuthorizationCode
+    | Password
+    | ClientCredentials
+    | RefreshToken
+    | CustomGrant String
+
+
+{-| Gets the `String` representation of a `GrantType`
+-}
+grantTypeToString : GrantType -> String
+grantTypeToString g =
+    case g of
+        AuthorizationCode ->
+            "authorization_code"
+
+        Password ->
+            "password"
+
+        ClientCredentials ->
+            "client_credentials"
+
+        RefreshToken ->
+            "refresh_token"
+
+        CustomGrant str ->
+            str
 
 
 

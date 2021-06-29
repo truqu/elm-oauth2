@@ -497,7 +497,7 @@ errorParser =
 
 {-| Put everything together and rely on `OAuth.parseTokenWith` instead of the default parser
 -}
-parsers : OAuth.Parsers
+parsers : OAuth.Parsers OAuth.AuthorizationError OAuth.AuthorizationSuccess
 parsers =
     { tokenParser = tokenParser
     , errorParser = errorParser

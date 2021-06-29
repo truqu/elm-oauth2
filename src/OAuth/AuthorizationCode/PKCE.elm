@@ -1,8 +1,10 @@
 module OAuth.AuthorizationCode.PKCE exposing
-    ( CodeVerifier, CodeChallenge, codeVerifierFromBytes, codeVerifierToString, mkCodeChallenge, codeChallengeToString
-    , makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
+    ( CodeVerifier(..), CodeChallenge(..), codeVerifierFromBytes, codeVerifierToString, mkCodeChallenge, codeChallengeToString
+    , makeAuthorizationUrl, Authorization, parseCode, AuthorizationResult, AuthorizationError, AuthorizationSuccess, AuthorizationCode
     , makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
+    , makeAuthorizationUrlWith, AuthorizationResultWith(..)
+    , makeTokenRequestWith
     , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     , parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
@@ -41,7 +43,7 @@ of this flow.
 
 ## Authorize
 
-@docs makeAuthorizationUrl, parseCode, Authorization, AuthorizationCode, AuthorizationResult, AuthorizationSuccess, AuthorizationError
+@docs makeAuthorizationUrl, Authorization, parseCode, AuthorizationResult, AuthorizationError, AuthorizationSuccess, AuthorizationCode
 
 
 ## Authenticate
@@ -54,12 +56,25 @@ of this flow.
 @docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
 
 
-## JSON Decoders (advanced)
+## Custom Decoders & Parsers (advanced)
+
+
+### Authorize
+
+@docs makeAuthorizationUrlWith, AuthorizationResultWith
+
+
+### Authenticate
+
+@docs makeTokenRequestWith
+
+
+### Json Decoders
 
 @docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
 
 
-## Query Parsers (advanced)
+### Query Parsers
 
 @docs parseCodeWith, Parsers, defaultParsers, defaultCodeParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
 
@@ -67,10 +82,12 @@ of this flow.
 
 import Base64.Encode as Base64
 import Bytes exposing (Bytes)
+import Dict as Dict exposing (Dict)
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode, Token, errorCodeFromString)
+import OAuth exposing (ErrorCode, GrantType(..), ResponseType(..), Token, errorCodeFromString)
+import OAuth.AuthorizationCode
 import SHA256 as SHA256
 import Url exposing (Url)
 import Url.Builder as Builder
@@ -248,26 +265,24 @@ type alias AuthorizationSuccess =
   - Success: a successfully parsed token and response
 
 -}
-type AuthorizationResult
+type alias AuthorizationResult =
+    AuthorizationResultWith AuthorizationError AuthorizationSuccess
+
+
+{-| A parameterized 'AuthorizationResult'. See 'parseCodeWith'.
+-}
+type AuthorizationResultWith error success
     = Empty
-    | Error AuthorizationError
-    | Success AuthorizationSuccess
+    | Error error
+    | Success success
 
 
 {-| Redirects the resource owner (user) to the resource provider server using the specified
 authorization flow.
 -}
 makeAuthorizationUrl : Authorization -> Url
-makeAuthorizationUrl { clientId, url, redirectUri, scope, state, codeChallenge } =
-    Internal.makeAuthorizationUrl
-        Internal.Code
-        { clientId = clientId
-        , url = url
-        , redirectUri = redirectUri
-        , scope = scope
-        , state = state
-        , codeChallenge = Just <| codeChallengeToString codeChallenge
-        }
+makeAuthorizationUrl =
+    makeAuthorizationUrlWith Code Dict.empty
 
 
 {-| Parse the location looking for a parameters set by the resource provider server after
@@ -279,87 +294,6 @@ Returns `AuthorizationResult Empty` when there's nothing.
 parseCode : Url -> AuthorizationResult
 parseCode =
     parseCodeWith defaultParsers
-
-
-
---
--- Query Parsers (advanced)
---
-
-
-{-| See `parseCode`, but gives you the ability to provide your own custom parsers.
--}
-parseCodeWith : Parsers -> Url -> AuthorizationResult
-parseCodeWith { codeParser, errorParser, authorizationSuccessParser, authorizationErrorParser } url_ =
-    let
-        url =
-            { url_ | path = "/" }
-    in
-    case Url.parse (Url.top <?> Query.map2 Tuple.pair codeParser errorParser) url of
-        Just ( Just code, _ ) ->
-            parseUrlQuery url Empty (Query.map Success <| authorizationSuccessParser code)
-
-        Just ( _, Just error ) ->
-            parseUrlQuery url Empty (Query.map Error <| authorizationErrorParser error)
-
-        _ ->
-            Empty
-
-
-{-| Parsers used in the 'parseCode' function.
-
-  - codeParser: looks for a 'code' string
-  - errorParser: looks for an 'error' to build a corresponding `ErrorCode`
-  - authorizationSuccessParser: selected when the `tokenParser` succeeded to parse the remaining parts
-  - authorizationErrorParser: selected when the `errorParser` succeeded to parse the remaining parts
-
--}
-type alias Parsers =
-    { codeParser : Query.Parser (Maybe String)
-    , errorParser : Query.Parser (Maybe ErrorCode)
-    , authorizationSuccessParser : String -> Query.Parser AuthorizationSuccess
-    , authorizationErrorParser : ErrorCode -> Query.Parser AuthorizationError
-    }
-
-
-{-| Default parsers according to RFC-6749
--}
-defaultParsers : Parsers
-defaultParsers =
-    { codeParser = defaultCodeParser
-    , errorParser = defaultErrorParser
-    , authorizationSuccessParser = defaultAuthorizationSuccessParser
-    , authorizationErrorParser = defaultAuthorizationErrorParser
-    }
-
-
-{-| Default 'code' parser according to RFC-6749
--}
-defaultCodeParser : Query.Parser (Maybe String)
-defaultCodeParser =
-    Query.string "code"
-
-
-{-| Default 'error' parser according to RFC-6749
--}
-defaultErrorParser : Query.Parser (Maybe ErrorCode)
-defaultErrorParser =
-    errorParser errorCodeFromString
-
-
-{-| Default response success parser according to RFC-6749
--}
-defaultAuthorizationSuccessParser : String -> Query.Parser AuthorizationSuccess
-defaultAuthorizationSuccessParser code =
-    Query.map (AuthorizationSuccess code)
-        stateParser
-
-
-{-| Default response error parser according to RFC-6749
--}
-defaultAuthorizationErrorParser : ErrorCode -> Query.Parser AuthorizationError
-defaultAuthorizationErrorParser =
-    authorizationErrorParser
 
 
 
@@ -492,28 +426,8 @@ type alias Credentials =
 
 -}
 makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
-makeTokenRequest toMsg { credentials, code, codeVerifier, url, redirectUri } =
-    let
-        body =
-            [ Builder.string "grant_type" "authorization_code"
-            , Builder.string "client_id" credentials.clientId
-            , Builder.string "redirect_uri" (makeRedirectUri redirectUri)
-            , Builder.string "code" code
-            , Builder.string "code_verifier" (codeVerifierToString codeVerifier)
-            ]
-                |> Builder.toQuery
-                |> String.dropLeft 1
-
-        headers =
-            makeHeaders <|
-                case credentials.secret of
-                    Nothing ->
-                        Nothing
-
-                    Just secret ->
-                        Just { clientId = credentials.clientId, secret = secret }
-    in
-    makeRequest toMsg url headers body
+makeTokenRequest =
+    makeTokenRequestWith AuthorizationCode defaultAuthenticationSuccessDecoder Dict.empty
 
 
 
@@ -557,6 +471,150 @@ defaultAuthenticationSuccessDecoder =
 defaultAuthenticationErrorDecoder : Json.Decoder AuthenticationError
 defaultAuthenticationErrorDecoder =
     Internal.authenticationErrorDecoder defaultErrorDecoder
+
+
+
+--
+-- Custom Decoders & Parsers (advanced)
+--
+
+
+{-| Like 'makeAuthorizationUrl', but gives you the ability to specify a custom response type
+and extra fields to be set on the query.
+
+    makeAuthorizationUrl : Authorization -> Url
+    makeAuthorizationUrl =
+        makeAuthorizationUrlWith Code Dict.empty
+
+For example, to interact with a service implementing `OpenID+Connect` you may require a different
+token type and an extra query parameter as such:
+
+    makeAuthorizationUrlWith
+        (CustomResponse "code+id_token")
+        (Dict.fromList [ ( "resource", "001" ) ])
+        authorization
+
+-}
+makeAuthorizationUrlWith : ResponseType -> Dict String String -> Authorization -> Url
+makeAuthorizationUrlWith responseType extraFields { clientId, url, redirectUri, scope, state, codeChallenge } =
+    let
+        extraInternalFields =
+            Dict.fromList
+                [ ( "code_challenge", codeChallengeToString codeChallenge )
+                , ( "code_challenge_method", "S256" )
+                ]
+    in
+    OAuth.AuthorizationCode.makeAuthorizationUrlWith
+        responseType
+        (Dict.union extraFields extraInternalFields)
+        { clientId = clientId
+        , url = url
+        , redirectUri = redirectUri
+        , scope = scope
+        , state = state
+        }
+
+
+{-| See `parseCode`, but gives you the ability to provide your own custom parsers.
+-}
+parseCodeWith : Parsers error success -> Url -> AuthorizationResultWith error success
+parseCodeWith parsers url =
+    case OAuth.AuthorizationCode.parseCodeWith parsers url of
+        OAuth.AuthorizationCode.Empty ->
+            Empty
+
+        OAuth.AuthorizationCode.Success s ->
+            Success s
+
+        OAuth.AuthorizationCode.Error e ->
+            Error e
+
+
+{-| Like 'makeTokenRequest', but gives you the ability to specify custom grant type and extra
+fields to be set on the query.
+
+    makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+    makeTokenRequest =
+        makeTokenRequestWith
+            AuthorizationCode
+            defaultAuthenticationSuccessDecoder
+            Dict.empty
+
+-}
+makeTokenRequestWith : GrantType -> Json.Decoder success -> Dict String String -> (Result Http.Error success -> msg) -> Authentication -> RequestParts msg
+makeTokenRequestWith grantType decoder extraFields toMsg { credentials, code, codeVerifier, url, redirectUri } =
+    let
+        extraInternalFields =
+            Dict.fromList
+                [ ( "code_verifier", codeVerifierToString codeVerifier )
+                ]
+    in
+    OAuth.AuthorizationCode.makeTokenRequestWith
+        grantType
+        decoder
+        (Dict.union extraFields extraInternalFields)
+        toMsg
+        { credentials = credentials
+        , code = code
+        , url = url
+        , redirectUri = redirectUri
+        }
+
+
+{-| Parsers used in the 'parseCode' function.
+
+  - codeParser: looks for a 'code' string
+  - errorParser: looks for an 'error' to build a corresponding `ErrorCode`
+  - authorizationSuccessParser: selected when the `tokenParser` succeeded to parse the remaining parts
+  - authorizationErrorParser: selected when the `errorParser` succeeded to parse the remaining parts
+
+-}
+type alias Parsers error success =
+    { codeParser : Query.Parser (Maybe String)
+    , errorParser : Query.Parser (Maybe ErrorCode)
+    , authorizationSuccessParser : String -> Query.Parser success
+    , authorizationErrorParser : ErrorCode -> Query.Parser error
+    }
+
+
+{-| Default parsers according to RFC-6749
+-}
+defaultParsers : Parsers AuthorizationError AuthorizationSuccess
+defaultParsers =
+    { codeParser = defaultCodeParser
+    , errorParser = defaultErrorParser
+    , authorizationSuccessParser = defaultAuthorizationSuccessParser
+    , authorizationErrorParser = defaultAuthorizationErrorParser
+    }
+
+
+{-| Default 'code' parser according to RFC-6749
+-}
+defaultCodeParser : Query.Parser (Maybe String)
+defaultCodeParser =
+    Query.string "code"
+
+
+{-| Default 'error' parser according to RFC-6749
+-}
+defaultErrorParser : Query.Parser (Maybe ErrorCode)
+defaultErrorParser =
+    errorParser errorCodeFromString
+
+
+{-| Default response success parser according to RFC-6749
+-}
+defaultAuthorizationSuccessParser : String -> Query.Parser AuthorizationSuccess
+defaultAuthorizationSuccessParser code =
+    Query.map (AuthorizationSuccess code)
+        stateParser
+
+
+{-| Default response error parser according to RFC-6749
+-}
+defaultAuthorizationErrorParser : ErrorCode -> Query.Parser AuthorizationError
+defaultAuthorizationErrorParser =
+    authorizationErrorParser
 
 
 {-| Json decoder for an 'expire' timestamp
