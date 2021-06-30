@@ -1,6 +1,6 @@
 module OAuth.Implicit exposing
-    ( makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult(..), AuthorizationSuccess, AuthorizationError
-    , parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+    ( makeAuthorizationUrl, Authorization, parseToken, AuthorizationResult, AuthorizationError, AuthorizationSuccess
+    , AuthorizationResultWith(..), makeAuthorizationUrlWith, parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
     )
 
 {-| The implicit grant type is used to obtain access tokens (it does not
@@ -33,17 +33,18 @@ request.
 
 ## Authorize
 
-@docs makeAuthorizationUrl, parseToken, Authorization, AuthorizationResult, AuthorizationSuccess, AuthorizationError
+@docs makeAuthorizationUrl, Authorization, parseToken, AuthorizationResult, AuthorizationError, AuthorizationSuccess
 
 
 ## Custom Parsers (advanced)
 
-@docs parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
+@docs AuthorizationResultWith, makeAuthorizationUrlWith, parseTokenWith, Parsers, defaultParsers, defaultTokenParser, defaultErrorParser, defaultAuthorizationSuccessParser, defaultAuthorizationErrorParser
 
 -}
 
+import Dict as Dict exposing (Dict)
 import Internal exposing (..)
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
+import OAuth exposing (ErrorCode(..), ResponseType(..), Token, errorCodeFromString)
 import Url exposing (Protocol(..), Url)
 import Url.Parser as Url exposing ((<?>))
 import Url.Parser.Query as Query
@@ -153,26 +154,24 @@ type alias AuthorizationSuccess =
   - Success: a successfully parsed token and response
 
 -}
-type AuthorizationResult
+type alias AuthorizationResult =
+    AuthorizationResultWith AuthorizationError AuthorizationSuccess
+
+
+{-| A parameterized 'AuthorizationResult', see 'parseTokenWith'.
+-}
+type AuthorizationResultWith error success
     = Empty
-    | Error AuthorizationError
-    | Success AuthorizationSuccess
+    | Error error
+    | Success success
 
 
 {-| Redirects the resource owner (user) to the resource provider server using the specified
 authorization flow.
 -}
 makeAuthorizationUrl : Authorization -> Url
-makeAuthorizationUrl { clientId, url, redirectUri, scope, state } =
-    Internal.makeAuthorizationUrl
-        Internal.Token
-        { clientId = clientId
-        , url = url
-        , redirectUri = redirectUri
-        , scope = scope
-        , state = state
-        , codeChallenge = Nothing
-        }
+makeAuthorizationUrl =
+    makeAuthorizationUrlWith Token Dict.empty
 
 
 {-| Parses the location looking for parameters in the 'fragment' set by the
@@ -188,17 +187,50 @@ parseToken =
 
 
 --
--- Authorize (Advanced)
+-- Custom Parsers (Advanced)
 --
 
 
-{-| See 'parseToken', but gives you the ability to provide your own custom parsers.
+{-| Like 'makeAuthorizationUrl', but gives you the ability to specify a custom response type
+and extra fields to be set on the query.
+
+    makeAuthorizationUrl : Authorization -> Url
+    makeAuthorizationUrl =
+        makeAuthorizationUrlWith Token Dict.empty
+
+For example, to interact with a service implementing `OpenID+Connect` you may require a different
+token type and an extra query parameter as such:
+
+    makeAuthorizationUrlWith
+        (CustomResponse "token+id_token")
+        (Dict.fromList [ ( "resource", "001" ) ])
+        authorization
+
+-}
+makeAuthorizationUrlWith : ResponseType -> Dict String String -> Authorization -> Url
+makeAuthorizationUrlWith responseType extraFields { clientId, url, redirectUri, scope, state } =
+    Internal.makeAuthorizationUrl
+        responseType
+        extraFields
+        { clientId = clientId
+        , url = url
+        , redirectUri = redirectUri
+        , scope = scope
+        , state = state
+        }
+
+
+{-| Like 'parseToken', but gives you the ability to provide your own custom parsers.
 
 This is especially useful when interacting with authorization servers that don't quite
 implement the OAuth2.0 specifications.
 
+    parseToken : Url -> AuthorizationResultWith AuthorizationError AuthorizationSuccess
+    parseToken =
+        parseTokenWith defaultParsers
+
 -}
-parseTokenWith : Parsers -> Url -> AuthorizationResult
+parseTokenWith : Parsers error success -> Url -> AuthorizationResultWith error success
 parseTokenWith { tokenParser, errorParser, authorizationSuccessParser, authorizationErrorParser } url_ =
     let
         url =
@@ -215,12 +247,6 @@ parseTokenWith { tokenParser, errorParser, authorizationSuccessParser, authoriza
             Empty
 
 
-
---
--- Query Parsers
---
-
-
 {-| Parsers used in the 'parseToken' function.
 
   - tokenParser: Looks for an 'access\_token' and 'token\_type' to build a `Token`
@@ -229,17 +255,17 @@ parseTokenWith { tokenParser, errorParser, authorizationSuccessParser, authoriza
   - authorizationErrorParser: Selected when the `errorParser` succeeded to parse the remaining parts
 
 -}
-type alias Parsers =
+type alias Parsers error success =
     { tokenParser : Query.Parser (Maybe Token)
     , errorParser : Query.Parser (Maybe ErrorCode)
-    , authorizationSuccessParser : Token -> Query.Parser AuthorizationSuccess
-    , authorizationErrorParser : ErrorCode -> Query.Parser AuthorizationError
+    , authorizationSuccessParser : Token -> Query.Parser success
+    , authorizationErrorParser : ErrorCode -> Query.Parser error
     }
 
 
 {-| Default parsers according to RFC-6749
 -}
-defaultParsers : Parsers
+defaultParsers : Parsers AuthorizationError AuthorizationSuccess
 defaultParsers =
     { tokenParser = defaultTokenParser
     , errorParser = defaultErrorParser

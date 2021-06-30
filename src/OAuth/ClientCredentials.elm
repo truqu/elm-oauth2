@@ -1,7 +1,7 @@
 module OAuth.ClientCredentials exposing
     ( makeTokenRequest, Authentication, Credentials, AuthenticationSuccess, AuthenticationError, RequestParts
     , defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
-    , defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+    , makeTokenRequestWith, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
     )
 
 {-| The client can request an access token using only its client
@@ -28,16 +28,17 @@ request.
 @docs defaultAuthenticationSuccessDecoder, defaultAuthenticationErrorDecoder
 
 
-## JSON Decoders (advanced)
+## Custom Decoders & Parsers (advanced)
 
-@docs defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
+@docs makeTokenRequestWith, defaultExpiresInDecoder, defaultScopeDecoder, lenientScopeDecoder, defaultTokenDecoder, defaultRefreshTokenDecoder, defaultErrorDecoder, defaultErrorDescriptionDecoder, defaultErrorUriDecoder
 
 -}
 
+import Dict as Dict exposing (Dict)
 import Http
 import Internal as Internal exposing (..)
 import Json.Decode as Json
-import OAuth exposing (ErrorCode(..), Token, errorCodeFromString)
+import OAuth exposing (ErrorCode(..), GrantType(..), Token, errorCodeFromString, grantTypeToString)
 import Url exposing (Url)
 import Url.Builder as Builder
 
@@ -150,22 +151,8 @@ type alias RequestParts a =
 
 -}
 makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
-makeTokenRequest toMsg { credentials, scope, url } =
-    let
-        body =
-            [ Builder.string "grant_type" "client_credentials" ]
-                |> urlAddList "scope" scope
-                |> Builder.toQuery
-                |> String.dropLeft 1
-
-        headers =
-            makeHeaders <|
-                Just
-                    { clientId = credentials.clientId
-                    , secret = credentials.secret
-                    }
-    in
-    makeRequest toMsg url headers body
+makeTokenRequest =
+    makeTokenRequestWith ClientCredentials defaultAuthenticationSuccessDecoder Dict.empty
 
 
 
@@ -209,6 +196,40 @@ defaultAuthenticationSuccessDecoder =
 defaultAuthenticationErrorDecoder : Json.Decoder AuthenticationError
 defaultAuthenticationErrorDecoder =
     Internal.authenticationErrorDecoder defaultErrorDecoder
+
+
+
+--
+-- Custom Decoders & Parsers (advanced)
+--
+
+
+{-| Like 'makeTokenRequest', but gives you the ability to specify custom grant type and extra
+fields to be set on the query.
+
+    makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
+    makeTokenRequest =
+        makeTokenRequestWith ClientCredentials defaultAuthenticationSuccessDecoder Dict.empty
+
+-}
+makeTokenRequestWith : GrantType -> Json.Decoder success -> Dict String String -> (Result Http.Error success -> msg) -> Authentication -> RequestParts msg
+makeTokenRequestWith grantType decoder extraFields toMsg { credentials, scope, url } =
+    let
+        body =
+            [ Builder.string "grant_type" (grantTypeToString grantType) ]
+                |> urlAddList "scope" scope
+                |> urlAddExtraFields extraFields
+                |> Builder.toQuery
+                |> String.dropLeft 1
+
+        headers =
+            makeHeaders <|
+                Just
+                    { clientId = credentials.clientId
+                    , secret = credentials.secret
+                    }
+    in
+    makeRequest decoder toMsg url headers body
 
 
 {-| Json decoder for an 'expire' timestamp

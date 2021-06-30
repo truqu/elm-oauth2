@@ -1,6 +1,44 @@
-module Internal exposing (AuthenticationError, AuthenticationSuccess, Authorization, AuthorizationError, RequestParts, ResponseType(..), authenticationErrorDecoder, authenticationSuccessDecoder, authorizationErrorParser, decoderFromJust, decoderFromResult, errorDecoder, errorDescriptionDecoder, errorDescriptionParser, errorParser, errorUriDecoder, errorUriParser, expiresInDecoder, expiresInParser, extractTokenString, lenientScopeDecoder, makeAuthorizationUrl, makeHeaders, makeRedirectUri, makeRequest, parseUrlQuery, protocolToString, refreshTokenDecoder, responseTypeToString, scopeDecoder, scopeParser, spaceSeparatedListParser, stateParser, tokenDecoder, tokenParser, urlAddList, urlAddMaybe)
+module Internal exposing
+    ( AuthenticationError
+    , AuthenticationSuccess
+    , Authorization
+    , AuthorizationError
+    , RequestParts
+    , authenticationErrorDecoder
+    , authenticationSuccessDecoder
+    , authorizationErrorParser
+    , decoderFromJust
+    , decoderFromResult
+    , errorDecoder
+    , errorDescriptionDecoder
+    , errorDescriptionParser
+    , errorParser
+    , errorUriDecoder
+    , errorUriParser
+    , expiresInDecoder
+    , expiresInParser
+    , extractTokenString
+    , lenientScopeDecoder
+    , makeAuthorizationUrl
+    , makeHeaders
+    , makeRedirectUri
+    , makeRequest
+    , parseUrlQuery
+    , protocolToString
+    , refreshTokenDecoder
+    , scopeDecoder
+    , scopeParser
+    , spaceSeparatedListParser
+    , stateParser
+    , tokenDecoder
+    , tokenParser
+    , urlAddExtraFields
+    , urlAddList
+    , urlAddMaybe
+    )
 
 import Base64.Encode as Base64
+import Dict as Dict exposing (Dict)
 import Http as Http
 import Json.Decode as Json
 import OAuth exposing (..)
@@ -215,14 +253,19 @@ urlAddMaybe param ms qs =
            )
 
 
+urlAddExtraFields : Dict String String -> List QueryParameter -> List QueryParameter
+urlAddExtraFields extraFields zero =
+    Dict.foldr (\k v qs -> Builder.string k v :: qs) zero extraFields
+
+
 
 --
 -- Smart Constructors
 --
 
 
-makeAuthorizationUrl : ResponseType -> Authorization -> Url
-makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state, codeChallenge } =
+makeAuthorizationUrl : ResponseType -> Dict String String -> Authorization -> Url
+makeAuthorizationUrl responseType extraFields { clientId, url, redirectUri, scope, state } =
     let
         query =
             [ Builder.string "client_id" clientId
@@ -231,9 +274,7 @@ makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state, co
             ]
                 |> urlAddList "scope" scope
                 |> urlAddMaybe "state" state
-                |> urlAddMaybe "code_challenge" codeChallenge
-                |> urlAddMaybe "code_challenge_method"
-                    (Maybe.map (always "S256") codeChallenge)
+                |> urlAddExtraFields extraFields
                 |> Builder.toQuery
                 |> String.dropLeft 1
     in
@@ -245,13 +286,13 @@ makeAuthorizationUrl responseType { clientId, url, redirectUri, scope, state, co
             { url | query = Just (baseQuery ++ "&" ++ query) }
 
 
-makeRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Url -> List Http.Header -> String -> RequestParts msg
-makeRequest toMsg url headers body =
+makeRequest : Json.Decoder success -> (Result Http.Error success -> msg) -> Url -> List Http.Header -> String -> RequestParts msg
+makeRequest decoder toMsg url headers body =
     { method = "POST"
     , headers = headers
     , url = Url.toString url
     , body = Http.stringBody "application/x-www-form-urlencoded" body
-    , expect = Http.expectJson toMsg authenticationSuccessDecoder
+    , expect = Http.expectJson toMsg decoder
     , timeout = Nothing
     , tracker = Nothing
     }
@@ -281,18 +322,6 @@ makeRedirectUri url =
 --
 -- String utilities
 --
-
-
-{-| Gets the `String` representation of a `ResponseType`.
--}
-responseTypeToString : ResponseType -> String
-responseTypeToString r =
-    case r of
-        Code ->
-            "code"
-
-        Token ->
-            "token"
 
 
 {-| Gets the `String` representation of an `Protocol`
@@ -326,15 +355,6 @@ extractTokenString =
     tokenToString >> String.dropLeft 7
 
 
-{-| Describes the desired type of response to an authorization. Use `Code` to ask for an
-authorization code and continue with the according flow. Use `Token` to do an implicit
-authentication and directly retrieve a `Token` from the authorization.
--}
-type ResponseType
-    = Code
-    | Token
-
-
 
 --
 -- Record Alias Re-Definition
@@ -358,7 +378,6 @@ type alias Authorization =
     , redirectUri : Url
     , scope : List String
     , state : Maybe String
-    , codeChallenge : Maybe String
     }
 
 
