@@ -1,4 +1,4 @@
-## v8.0.0 (2021-??-??)
+## v8.0.0 (2021-06-30)
 
 - Allow more advanced control for tweaking parsers, decoders and url builders. This is particularly useful for applications integrating with systems which are either not strictly following the OAuth2.0 specifications, or, systems who introduce custom fields of some importance for the underlying application. (see #29, #23, #21)
 
