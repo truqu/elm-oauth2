@@ -1,0 +1,110 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: Roboto, Arial, sans-serif;
+  width: 100%;
+}
+
+button {
+  border: none;
+  box-shadow: rgba(0,0,0,0.25) 0px 2px 4px 0px;
+  color: #757575;
+  cursor: pointer;
+  font-size: 24px;
+  height: 3em;
+  margin: 0.5em 0;
+  outline: none;
+  padding: 0 1em 0 4em;
+  text-align: right;
+  width: 10em;
+}
+
+button::-moz-focus-inner {
+  border: 0;
+}
+
+img.avatar {
+  height: 15em;
+  width: 15em;
+  border-radius: 50%;
+  box-shadow: rgba(0,0,0,0.25) 0 0 4px 2px;
+}
+
+img.avatar + p {
+  margin: 2em;
+  font: 24px Roboto, Arial;
+  color: #757575;
+}
+
+.flex {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.flex-column {
+  flex-direction: column;
+  justify-content: center;
+}
+
+.flex-space-around {
+  height: 100%;
+  justify-content: space-around;
+}
+
+
+.step {
+  width: 2em;
+  height: 2em;
+  border: 1px solid;
+  border-radius: 50%;
+  border-color: #95a5a6;
+}
+
+.step > * {
+  position: relative;
+  display: block;
+  top: 2.5em;
+  color: #95a5a6;
+  white-space: nowrap;
+  font-variant: small-caps;
+}
+
+.step-separator {
+  width: 7.5em;
+  height: 0.1em;
+  background-color: #95a5a6;
+}
+
+.step-active {
+  border-color: #2ecc71;
+  background-color: #2ecc71;
+  transition: all 250ms ease-in;
+}
+
+.step-active > * {
+  font-weight: bold;
+  color: #2ecc71;
+}
+
+.step-errored {
+  border-color: #e74c3c;
+  background-color: #e74c3c;
+  transition: all 250ms ease-in;
+}
+
+.step-errored > * {
+  font-weight: bold;
+  color: #e74c3c;;
+}
+
+.step-separator.step-active {
+  height: 0.2em;
+  transition: all 250ms ease-in;
+}
