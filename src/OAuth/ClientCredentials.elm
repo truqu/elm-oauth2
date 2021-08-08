@@ -51,13 +51,13 @@ import Url.Builder as Builder
 
 {-| Request configuration for a ClientCredentials authentication
 
-  - credentials (_REQUIRED_):
-    Credentials needed for `Basic` authentication.
+  - `credentials` (_REQUIRED_):
+    Credentials needed for Basic authentication.
 
-  - url (_REQUIRED_):
+  - `url` (_REQUIRED_):
     The token endpoint to contact the authorization server.
 
-  - scope (_OPTIONAL_):
+  - `scope` (_OPTIONAL_):
     The scope of the access request.
 
 -}
@@ -81,20 +81,20 @@ type alias Credentials =
 
 {-| The response obtained as a result of an authentication (implicit or not)
 
-  - token (_REQUIRED_):
+  - `token` (_REQUIRED_):
     The access token issued by the authorization server.
 
-  - refreshToken (_OPTIONAL_):
+  - `refreshToken` (_OPTIONAL_):
     The refresh token, which can be used to obtain new access tokens using the same authorization
     grant as described in [Section 6](https://tools.ietf.org/html/rfc6749#section-6).
 
-  - expiresIn (_RECOMMENDED_):
+  - `expiresIn` (_RECOMMENDED_):
     The lifetime in seconds of the access token. For example, the value "3600" denotes that the
     access token will expire in one hour from the time the response was generated. If omitted, the
     authorization server SHOULD provide the expiration time via other means or document the default
     value.
 
-  - scope (_OPTIONAL, if identical to the scope requested; otherwise, REQUIRED_):
+  - `scope` (_OPTIONAL, if identical to the scope requested; otherwise, REQUIRED_):
     The scope of the access token as described by [Section 3.3](https://tools.ietf.org/html/rfc6749#section-3.3).
 
 -}
@@ -108,19 +108,19 @@ type alias AuthenticationSuccess =
 
 {-| Describes an OAuth error as a result of a request failure
 
-  - error (_REQUIRED_):
+  - `error` (_REQUIRED_):
     A single ASCII error code.
 
-  - errorDescription (_OPTIONAL_)
-    Human-readable ASCII text providing additional information, used to assist the client developer in
-    understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
+  - `errorDescription` (_OPTIONAL_)
+    Human-readable ASCII text providing additional information, used to assist the client developer
+    in understanding the error that occurred. Values for the `errorDescription` parameter MUST NOT
     include characters outside the set `%x20-21 / %x23-5B / %x5D-7E`.
 
-  - errorUri (_OPTIONAL_):
-    A URI identifying a human-readable web page with information about the error, used to
-    provide the client developer with additional information about the error. Values for the
-    `errorUri` parameter MUST conform to the URI-reference syntax and thus MUST NOT include
-    characters outside the set `%x21 / %x23-5B / %x5D-7E`.
+  - `errorUri` (_OPTIONAL_):
+    A URI identifying a human-readable web page with information about the error, used to provide
+    the client developer with additional information about the error. Values for the `errorUri`
+    parameter MUST conform to the URI-reference syntax and thus MUST NOT include characters outside
+    the set `%x21 / %x23-5B / %x5D-7E`.
 
 -}
 type alias AuthenticationError =
@@ -130,8 +130,8 @@ type alias AuthenticationError =
     }
 
 
-{-| Parts required to build a request. This record is given to `Http.request` in order
-to create a new request and may be adjusted at will.
+{-| Parts required to build a request. This record is given to [`Http.request`](https://package.elm-lang.org/packages/elm/http/latest/Http#request)
+in order to create a new request and may be adjusted at will.
 -}
 type alias RequestParts a =
     { method : String
@@ -204,8 +204,8 @@ defaultAuthenticationErrorDecoder =
 --
 
 
-{-| Like 'makeTokenRequest', but gives you the ability to specify custom grant type and extra
-fields to be set on the query.
+{-| Like [`makeTokenRequest`](#makeTokenRequest), but gives you the ability to specify custom grant
+type and extra fields to be set on the query.
 
     makeTokenRequest : (Result Http.Error AuthenticationSuccess -> msg) -> Authentication -> RequestParts msg
     makeTokenRequest =
@@ -232,56 +232,56 @@ makeTokenRequestWith grantType decoder extraFields toMsg { credentials, scope, u
     makeRequest decoder toMsg url headers body
 
 
-{-| Json decoder for an 'expire' timestamp
+{-| Json decoder for the `expiresIn` field.
 -}
 defaultExpiresInDecoder : Json.Decoder (Maybe Int)
 defaultExpiresInDecoder =
     Internal.expiresInDecoder
 
 
-{-| Json decoder for a 'scope'
+{-| Json decoder for the `scope` field (space-separated).
 -}
 defaultScopeDecoder : Json.Decoder (List String)
 defaultScopeDecoder =
     Internal.scopeDecoder
 
 
-{-| Json decoder for a 'scope', allowing comma- or space-separated scopes
+{-| Json decoder for the `scope` field (comma- or space-separated).
 -}
 lenientScopeDecoder : Json.Decoder (List String)
 lenientScopeDecoder =
     Internal.lenientScopeDecoder
 
 
-{-| Json decoder for an 'access\_token'
+{-| Json decoder for the `access_token` field.
 -}
 defaultTokenDecoder : Json.Decoder Token
 defaultTokenDecoder =
     Internal.tokenDecoder
 
 
-{-| Json decoder for a 'refresh\_token'
+{-| Json decoder for the `refresh_token` field.
 -}
 defaultRefreshTokenDecoder : Json.Decoder (Maybe Token)
 defaultRefreshTokenDecoder =
     Internal.refreshTokenDecoder
 
 
-{-| Json decoder for 'error' field
+{-| Json decoder for the `error` field.
 -}
 defaultErrorDecoder : Json.Decoder ErrorCode
 defaultErrorDecoder =
     Internal.errorDecoder errorCodeFromString
 
 
-{-| Json decoder for 'error\_description' field
+{-| Json decoder for the `error_description` field.
 -}
 defaultErrorDescriptionDecoder : Json.Decoder (Maybe String)
 defaultErrorDescriptionDecoder =
     Internal.errorDescriptionDecoder
 
 
-{-| Json decoder for 'error\_uri' field
+{-| Json decoder for the `error_uri` field.
 -}
 defaultErrorUriDecoder : Json.Decoder (Maybe String)
 defaultErrorUriDecoder =

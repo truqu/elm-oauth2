@@ -1,7 +1,7 @@
 module OAuth exposing
     ( Token, useToken, tokenToString, tokenFromString
-    , ResponseType(..), responseTypeToString, GrantType(..), grantTypeToString
     , ErrorCode(..), errorCodeToString, errorCodeFromString
+    , ResponseType(..), responseTypeToString, GrantType(..), grantTypeToString
     , TokenType, TokenString, makeToken, makeRefreshToken
     )
 
@@ -31,7 +31,11 @@ you'll only need to use one of the additional modules:
     with the authorization server (the method of which is beyond the scope of this specification)
     [4.4](https://tools.ietf.org/html/rfc6749#section-4.3).
 
-In practice, you most probably want to use the _OAuth.Implicit_ module which is the most commonly
+In practice, you most probably want to use the
+[`OAuth.AuthorizationCode`](http://package.elm-lang.org/packages/truqu/elm-oauth2/latest/OAuth-AuthorizationCode).
+If your authorization server supports it, you should look at the PKCE extension in a second-time!
+
+which is the most commonly
 used.
 
 
@@ -40,14 +44,16 @@ used.
 @docs Token, useToken, tokenToString, tokenFromString
 
 
-## Response & Grant types
-
-@docs ResponseType, responseTypeToString, GrantType, grantTypeToString
-
-
 ## ErrorCode
 
 @docs ErrorCode, errorCodeToString, errorCodeFromString
+
+
+## Response & Grant types (Advanced)
+
+The following section can be ignored if you're dealing with a very generic OAuth2.0 implementation. If however, your authorization server does implement some extra features on top of the OAuth2.0 protocol (e.g. OpenID Connect), you will require to tweak response parsers and possibly, response type to cope with these discrepancies. In short, unless you're planning on using `makeTokenRequestWith` or `makeAuthorizationUrlWith`, you most probably won't need any of the functions below.
+
+@docs ResponseType, responseTypeToString, GrantType, grantTypeToString
 
 
 ## Decoders & Parsers Utils (advanced)
@@ -237,28 +243,28 @@ grantTypeToString g =
 
 {-| Describes an OAuth error response [4.1.2.1](https://tools.ietf.org/html/rfc6749#section-4.1.2.1)
 
-  - InvalidRequest: The request is missing a required parameter, includes an invalid parameter value,
+  - `InvalidRequest`: The request is missing a required parameter, includes an invalid parameter value,
     includes a parameter more than once, or is otherwise malformed.
 
-  - UnauthorizedClient: The client is not authorized to request an authorization code using this
+  - `UnauthorizedClient`: The client is not authorized to request an authorization code using this
     method.
 
-  - AccessDenied: The resource owner or authorization server denied the request.
+  - `AccessDenied`: The resource owner or authorization server denied the request.
 
-  - UnsupportedResponseType: The authorization server does not support obtaining an authorization code
+  - `UnsupportedResponseType`: The authorization server does not support obtaining an authorization code
     using this method.
 
-  - InvalidScope: The requested scope is invalid, unknown, or malformed.
+  - `InvalidScope`: The requested scope is invalid, unknown, or malformed.
 
-  - ServerError: The authorization server encountered an unexpected condition that prevented it from
+  - `ServerError`: The authorization server encountered an unexpected condition that prevented it from
     fulfilling the request. (This error code is needed because a 500 Internal Server Error HTTP status
     code cannot be returned to the client via an HTTP redirect.)
 
-  - TemporarilyUnavailable: The authorization server is currently unable to handle the request due to
+  - `TemporarilyUnavailable`: The authorization server is currently unable to handle the request due to
     a temporary overloading or maintenance of the server. (This error code is needed because a 503
     Service Unavailable HTTP status code cannot be returned to the client via an HTTP redirect.)
 
-  - Custom: Encountered a 'free-string' or custom code not specified by the official RFC but returned
+  - `Custom`: Encountered a 'free-string' or custom code not specified by the official RFC but returned
     by the authorization server.
 
 -}
