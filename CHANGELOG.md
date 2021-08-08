@@ -1,3 +1,8 @@
+## v8.0.1 (2021-08-08)
+
+- Softly deprecate Implicit and put AuthorizationCode and AuthorizationCode w/ PKCE more in the spotlights, as per security recommendations. 
+- Documentation tweaks and improvements (better cross-link references, better code highlights, links to examples).
+
 ## v8.0.0 (2021-06-30)
 
 - Allow more advanced control for tweaking parsers, decoders and url builders. This is particularly useful for applications integrating with systems which are either not strictly following the OAuth2.0 specifications, or, systems who introduce custom fields of some importance for the underlying application. (see #29, #23, #21)
